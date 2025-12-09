@@ -129,19 +129,36 @@ class LLMClient:
         Returns:
             Parsed JSON dictionary.
         """
-        # Append schema instruction to prompt for better adherence (even with native JSON mode)
-        full_prompt = f"{prompt}\n\nRespond with valid JSON matching this schema:\n{json.dumps(response_schema, indent=2)}"
+        # Append strict schema instruction
+        full_prompt = (
+            f"{prompt}\n\n"
+            f"IMPORTANT: Respond with VALID JSON only. \n"
+            f"Do NOT use single quotes for keys or string values (use double quotes).\n"
+            f"Do NOT include trailing commas.\n"
+            f"Do NOT wrap in markdown code blocks if possible, just raw JSON.\n"
+            f"Match this schema implicitly:\n{json.dumps(response_schema, indent=2)}"
+        )
         
         text_response = self.generate_text(full_prompt, model_type=model_type, temperature=0.2)
         
-        # Clean up Markdown code blocks if present
+        # Robust cleanup
         clean_text = text_response.strip()
+        
+        # 1. Regex to extract the first JSON object or array
+        import re
+        json_match = re.search(r'(\{.*\}|\[.*\])', clean_text, re.DOTALL)
+        if json_match:
+            clean_text = json_match.group(1)
+            
+        # 2. Markdown cleanup (backup)
         if clean_text.startswith("```json"):
             clean_text = clean_text[7:]
         if clean_text.startswith("```"):
             clean_text = clean_text[3:]
         if clean_text.endswith("```"):
             clean_text = clean_text[:-3]
+            
+        clean_text = clean_text.strip()
             
         try:
             return json.loads(clean_text)

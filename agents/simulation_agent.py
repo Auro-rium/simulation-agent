@@ -40,10 +40,13 @@ class SimulationAgent(BaseAgent):
             model_type="reasoning"
         )
         
+        # result is a dict, so we handle it as such
+        scenarios = result.get("scenarios", [])
+        history = [f"{s.get('name', 'Unknown')}: {s.get('stability_assessment', '')}" for s in scenarios]
+        
         return {
             "simulation_result": result,
-            # Synthesize a simple history for UI compatibility if needed, or just let the result stand
-            "simulation_history": [s.name + ": " + s.stability_assessment for s in result.scenarios]
+            "simulation_history": history
         }
 
 SIMULATION_SYSTEM_PROMPT = """You are SIMULATION_AGENT.

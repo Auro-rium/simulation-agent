@@ -1,0 +1,24 @@
+[project]
+name = "diplomatic-simulation"
+version = "0.1.0"
+description = "Agentic orchestration system using Gen AI to simulate negotiations beforehand."
+authors = [
+    {name = "Your Name", email = "your.email@example.com"},
+]
+metadata = { version = "0.1.0" }
+requires-python = ">=3.12"
+dependencies = [
+    "google-cloud-aiplatform",
+    "langgraph",
+    "langchain-core",
+    "fastapi",
+    "uvicorn[standard]",
+    "pydantic>=2.0",
+    "pyyaml",
+    "python-dotenv",
+    "streamlit>=1.30.0",
+    "watchdog"
+]
+
+[tool.setuptools]
+packages = ["orchestration", "agents", "workflows", "llm", "ui"]

@@ -1,0 +1,13 @@
+scenario_name: "Resource Stability Negotiation"
+actors:
+  A: "Developed Nation with advanced tech but resource scarcity"
+  B: "Resource-rich Nation with economic instability"
+  C: "International Trade Organization (neutral arbiter)"
+strategies:
+  A: "Secure long-term contracts, offer tech transfers"
+  B: "Maximize immediate revenue, protect sovereignty"
+  C: "Ensure fair trade, prevent monopoly"
+max_turns: 4
+context:
+  global_condition: "Global energy crisis, high inflation"
+  risk_tolerance: "Moderate"

@@ -1,0 +1,84 @@
+{
+  "run_id": "c9240a1a-d800-40d4-8f83-60fcfd2717bd",
+  "request": "Parallel Test",
+  "plan": {
+    "plan_id": "ec65fe1e-f321-4bc9-8d19-fde03e96640f",
+    "high_level_goal": null,
+    "assumptions": [],
+    "steps": [
+      {
+        "step_id": "S1",
+        "task": "T1",
+        "assigned_agent": "SECURITY",
+        "description": null,
+        "expected_output": null,
+        "params": {}
+      },
+      {
+        "step_id": "S2",
+        "task": "T2",
+        "assigned_agent": "ECONOMICS",
+        "description": null,
+        "expected_output": null,
+        "params": {}
+      }
+    ],
+    "final_step": "SIMULATION",
+    "metadata": {}
+  },
+  "specialist_outputs": [
+    {
+      "agent": "SECURITY",
+      "step_id": "S1",
+      "output": {
+        "analysis": "Done"
+      },
+      "meta": {
+        "latency_ms": 500.9140968322754,
+        "model": "agent-delegated"
+      }
+    },
+    {
+      "agent": "ECONOMICS",
+      "step_id": "S2",
+      "output": {
+        "analysis": "Done"
+      },
+      "meta": {
+        "latency_ms": 500.62060356140137,
+        "model": "agent-delegated"
+      }
+    }
+  ],
+  "constraint_result": {
+    "is_safe": true,
+    "warnings": [],
+    "sanitized_output": null,
+    "reasoning": null,
+    "ethical_flags": [],
+    "legal_flags": [],
+    "meta": {}
+  },
+  "simulation_result": {
+    "simulation_id": "81448543-25b0-4e8e-9231-2d535238be8c",
+    "simulation_history": [],
+    "outcomes": {
+      "summary": ""
+    },
+    "meta": {
+      "turns": 0
+    }
+  },
+  "manager_report": "Simulated Action",
+  "status": "completed",
+  "timestamps": {
+    "start": "2025-12-10T11:24:23.084900",
+    "plan_done": "2025-12-10T11:24:23.087354",
+    "specialists_done": "2025-12-10T11:24:23.589393",
+    "constraint_done": "2025-12-10T11:24:23.590494",
+    "end": "2025-12-10T11:24:23.592038"
+  },
+  "metadata": {
+    "seed": null
+  }
+}

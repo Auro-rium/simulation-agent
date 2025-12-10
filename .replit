@@ -1,8 +1,0 @@
-run = "streamlit run ui/app.py"
-entrypoint = "ui/app.py"
-
-[nix]
-channel = "stable-24_05"
-
-[deps]
-python = "3.12"

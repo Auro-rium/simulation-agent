@@ -1,17 +1,6 @@
 from typing import List, Any, Dict
-from pydantic import BaseModel, Field
+from core.schemas import Plan, Step
 from agents.base_agent import BaseAgent
-
-class PlanStep(BaseModel):
-    step_id: str
-    assigned_agent: str = Field(description="One of: SECURITY_ANALYSIS_AGENT, TECHNOLOGY_ANALYSIS_AGENT, ECONOMICS_SPECIALIST_AGENT")
-    description: str
-    expected_output: str
-
-class Plan(BaseModel):
-    high_level_goal: str
-    assumptions: List[str]
-    steps: List[PlanStep]
 
 class PlannerAgent(BaseAgent):
     def __init__(self):
@@ -20,9 +9,6 @@ class PlannerAgent(BaseAgent):
     def run(self, inputs: Dict[str, Any]) -> Dict[str, Any]:
         """
         Analyzes the user request and scenario to produce an execution plan.
-        Inputs:
-            - user_request: str
-            - scenario_context: Dict
         """
         user_req = inputs.get("user_request")
         context = inputs.get("scenario_context")
@@ -33,7 +19,7 @@ class PlannerAgent(BaseAgent):
         {PLANNER_SYSTEM_PROMPT}
         
         ---
-        PROBLEM STATEMENT / REQUEST: 
+        PROBLEM STATEMENT: 
         {user_req}
         
         CONTEXT: 
@@ -41,12 +27,12 @@ class PlannerAgent(BaseAgent):
         """
         
         try:
+            # We use the Plan schema from core
             plan_data = self.llm_client.generate_structured_output(
                 prompt,
                 response_schema=Plan.model_json_schema(),
                 model_type="reasoning"
             )
-            self.log(f"Plan generated with {len(plan_data.get('steps', []))} steps.")
             return {"plan": plan_data}
         except Exception as e:
             self.log(f"Planning failed: {e}")

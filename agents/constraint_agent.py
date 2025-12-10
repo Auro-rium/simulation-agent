@@ -1,14 +1,6 @@
 from typing import Any, Dict, List
-from pydantic import BaseModel
+from core.schemas import ConstraintResult
 from agents.base_agent import BaseAgent
-
-class ConstraintAssessment(BaseModel):
-    ethical_flags: list[str]
-    legal_or_policy_flags: list[str]
-    human_impact_analysis: list[str]
-    incoherence_or_contradictions: list[str]
-    required_modifications: list[str]
-    sanitized_recommendations_for_A: list[str]
 
 class ConstraintAgent(BaseAgent):
     def __init__(self):
@@ -30,7 +22,7 @@ class ConstraintAgent(BaseAgent):
         
         result = self.llm_client.generate_structured_output(
             prompt,
-            response_schema=ConstraintAssessment.model_json_schema(),
+            response_schema=ConstraintResult.model_json_schema(),
             model_type="reasoning"
         )
         return {"constraint_check": result}

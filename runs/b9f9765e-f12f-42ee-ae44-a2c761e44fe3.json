@@ -1,0 +1,106 @@
+{
+  "run_id": "b9f9765e-f12f-42ee-ae44-a2c761e44fe3",
+  "request": "Test Request",
+  "plan": {
+    "plan_id": "7ed17725-eccf-44b3-8538-699593b1ad56",
+    "high_level_goal": null,
+    "assumptions": [],
+    "steps": [
+      {
+        "step_id": "S1",
+        "task": "T1",
+        "assigned_agent": "SECURITY",
+        "description": null,
+        "expected_output": null,
+        "params": {}
+      },
+      {
+        "step_id": "S2",
+        "task": "T2",
+        "assigned_agent": "ECONOMICS",
+        "description": null,
+        "expected_output": null,
+        "params": {}
+      }
+    ],
+    "final_step": "SIMULATION",
+    "metadata": {}
+  },
+  "specialist_outputs": [
+    {
+      "agent": "SECURITY",
+      "step_id": "S1",
+      "output": {
+        "analysis": "Security OK"
+      },
+      "meta": {
+        "latency_ms": 0.9009838104248047,
+        "model": "agent-delegated"
+      }
+    },
+    {
+      "agent": "ECONOMICS",
+      "step_id": "S2",
+      "output": {
+        "analysis": "Econ OK"
+      },
+      "meta": {
+        "latency_ms": 0.6208419799804688,
+        "model": "agent-delegated"
+      }
+    }
+  ],
+  "constraint_result": {
+    "is_safe": true,
+    "warnings": [],
+    "sanitized_output": null,
+    "reasoning": null,
+    "ethical_flags": [],
+    "legal_flags": [],
+    "meta": {}
+  },
+  "simulation_result": {
+    "simulation_id": "8e5206ae-cde4-471f-8e9f-97fa9563a1d5",
+    "simulation_history": [
+      {
+        "turn": 1,
+        "actor": "A",
+        "action": "Simulated Action",
+        "result": "success",
+        "meta": {}
+      },
+      {
+        "turn": 2,
+        "actor": "B",
+        "action": "Simulated Action",
+        "result": "success",
+        "meta": {}
+      },
+      {
+        "turn": 3,
+        "actor": "A",
+        "action": "Simulated Action",
+        "result": "success",
+        "meta": {}
+      }
+    ],
+    "outcomes": {
+      "summary": "Turn 1 [A]: Simulated Action\nTurn 2 [B]: Simulated Action\nTurn 3 [A]: Simulated Action"
+    },
+    "meta": {
+      "turns": 3
+    }
+  },
+  "manager_report": "Simulated Action",
+  "status": "completed",
+  "timestamps": {
+    "start": "2025-12-10T11:25:03.538204",
+    "plan_done": "2025-12-10T11:25:03.547879",
+    "specialists_done": "2025-12-10T11:25:03.625370",
+    "constraint_done": "2025-12-10T11:25:03.626775",
+    "end": "2025-12-10T11:25:03.635556"
+  },
+  "metadata": {
+    "seed": null
+  }
+}

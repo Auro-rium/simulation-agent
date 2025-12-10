@@ -54,16 +54,23 @@ graph TD
 
 ## 🛠️ Installation
 
+### Option 1: Docker (Recommended)
+Pull and run the pre-built image from GitHub Container Registry:
+```bash
+docker pull ghcr.io/auro-rium/simulation-agent:v0.1.0
+docker run -p 8501:8501 --env-file .env ghcr.io/auro-rium/simulation-agent:v0.1.0
+```
+
+### Option 2: Local Source
+
 ### Prerequisites
 *   **Python 3.12+**
 *   **Google Cloud Project** with Vertex AI API enabled.
 
-### setup
-
 1.  **Clone the repository**:
     ```bash
-    git clone https://github.com/your-repo/diplomatic-simulation.git
-    cd diplomatic-simulation
+    git clone https://github.com/Auro-rium/simulation-agent.git
+    cd simulation-agent
     ```
 
 2.  **Install dependencies**:

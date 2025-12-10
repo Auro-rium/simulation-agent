@@ -1,45 +1,59 @@
-from agents.manager_agent import ManagerAgent
+from orchestration.manager import run_sync_wrapper
 import logging
-
-# In a real ADK app, we might decorate this or inherit from 'AdkApp'.
-# For this Python generic implementation which can run on any container,
-# we wrap the ManagerAgent.
 
 logger = logging.getLogger("adk_app")
 
 class MultiAgentApp:
     def __init__(self):
-        self._manager = None
-        self._init_error = None
-        
-    @property
-    def manager(self):
-        if self._manager is None:
-            try:
-                self._manager = ManagerAgent()
-            except Exception as e:
-                self._init_error = str(e)
-                logger.error(f"Failed to initialize ManagerAgent: {e}")
-                # We return None or raise, but handle_request needs to deal with it
-                raise e
-        return self._manager
+        pass # No explicit INIT needed for new manager as it is stateless/global instance usage
 
     def handle_request(self, user_request: str, context: dict = None) -> dict:
-        try:
-            # Trigger lazy load
-            mgr = self.manager
-        except Exception as e:
-            # Return a structured error response that the UI can render
-            return {
-                "manager_report": f"SYSTEM ERROR: Agent Initialization Failed.\n\nReason: {e}\n\nPlease check your Environment Variables (GOOGLE_CLOUD_PROJECT, VERTEX_AI_LOCATION) in Replit Secrets.",
-                "constraints": {"is_safe": False, "warnings": ["System Configuration Error"]},
-                "simulation_result": "Simulation Aborted."
-            }
-
         if context is None:
             context = {}
         logger.info(f"Received request: {user_request}")
-        return mgr.run({"request": user_request, "context": context})
+        # Call the v0.2.0 Async Manager via sync wrapper
+        final_report_dict = run_sync_wrapper(user_request, context)
+        
+        # TRANSFORMATION LAYER:
+        # The UI expects the old schema for "plan_summary", "specialist_findings", "simulation_result"
+        # The new report has objects. We need to map them back for UI compatibility until UI is updated.
+        
+        # 1. Map Plan
+        plan_obj = final_report_dict.get("plan", {})
+        plan_steps = [s.get("task") for s in plan_obj.get("steps", [])]
+        
+        # 2. Map Specialists
+        spec_outputs = final_report_dict.get("specialist_outputs", [])
+        findings = {}
+        for so in spec_outputs:
+            agent_key = so.get("agent", "").lower()
+            # Try to get nested analysis string or json dump
+            val = so.get("output", {})
+            if isinstance(val, dict):
+                 val = val.get("analysis", str(val))
+            findings[agent_key] = str(val)
+            
+        # 3. Map Simulation
+        sim_res = final_report_dict.get("simulation_result", {})
+        sim_history = []
+        for h in sim_res.get("simulation_history", []):
+            sim_history.append({
+                "turn": h.get("turn"),
+                "actor": h.get("actor"),
+                "action": h.get("action"),
+                "result": h.get("result")
+            })
+            
+        constraints = final_report_dict.get("constraint_result", {})
+            
+        return {
+            "original_request": final_report_dict.get("request"),
+            "plan_summary": plan_steps,
+            "specialist_findings": findings,
+            "constraints": constraints,
+            "simulation_result": {"simulation_history": sim_history, "outcomes": sim_res.get("outcomes")},
+            "manager_report": final_report_dict.get("manager_report")
+        }
 
 # Global instance
 app_instance = MultiAgentApp()

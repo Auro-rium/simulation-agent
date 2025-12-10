@@ -22,10 +22,10 @@ This system enables sophisticated scenario analysis through a declarative graph-
 *   **Intelligent Model Routing**: Flash models for speed, Pro models for reasoning quality
 *   **SHA256 File-Based Caching**: Prevents redundant LLM calls across runs
 *   **Exponential Backoff Retries**: Robust error handling with configurable timeouts
-*   **Real-Time Streaming**: Event-driven progress notifications (ready for WebSocket upgrade)
+*   **Real-Time Immersive UI**: "Cyberpunk" terminal aesthetic with live latency metrics and event streaming
+*   **Thread-Safe Async Architecture**: Robust event loop handling for concurrent simulations
 *   **Ethical Constraint Enforcement**: Dedicated agent for safety, coherence, and harm prevention
 *   **Turn-Based Simulation**: Game-theoretic multi-actor negotiation modeling
-*   **Modern UI**: "War Room" aesthetic with terminal-style output and live agent cards
 
 ---
 

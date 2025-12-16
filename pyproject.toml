@@ -22,3 +22,8 @@ dependencies = [
 
 [tool.setuptools]
 packages = ["orchestration", "agents", "workflows", "llm", "ui"]
+
+[tool.pytest.ini_options]
+pythonpath = "."
+testpaths = ["tests"]
+asyncio_mode = "strict"

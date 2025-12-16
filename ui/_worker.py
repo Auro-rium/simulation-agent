@@ -14,89 +14,92 @@ class Worker(threading.Thread):
         self.control = control  # e.g., {'paused': False, 'stop': False}
 
     def run(self):
-        try:
-            self.q.put({"type": "progress", "value": 10, "text": "Initializing Agents..."})
-            time.sleep(0.5)
+        import asyncio
+        from orchestration.manager_run import manager_run
+        
+        # Callback to bridge manager events to queue
+        def progress_callback(event: Dict):
+            if self.control.get("stop", False):
+                raise InterruptedError("Stopped by user")
+                
+            e_type = event.get("type")
+            payload = event.get("payload")
+            timestamp = event.get("timestamp")
+            
+            # Format time
+            time_str = ""
+            if timestamp:
+                # keep HH:MM:SS
+                time_str = timestamp.split("T")[-1].split(".")[0]
+            
+            if e_type == "status":
+                text = event.get("text", "")
+                self.q.put({"type": "turn", "payload": f"[{time_str}] [SYSTEM] {text}"})
+                
+            elif e_type == "plan":
+                steps = payload.get("steps", [])
+                self.q.put({"type": "turn", "payload": f"[{time_str}] [PLANNER] Generated {len(steps)} step plan."})
+                for s in steps:
+                     self.q.put({"type": "turn", "payload": f"  > {s.get('task')}"})
+                     
+            elif e_type == "specialist_done":
+                agent = event.get("agent")
+                meta = payload.get("meta", {})
+                lat = meta.get("latency_ms", 0)
+                
+                # Extract analysis text
+                output = payload.get("output", {})
+                # Try to get nested analysis string or just dump
+                if isinstance(output, dict):
+                     # Find likely keys
+                     val = output.get("security_analysis") or output.get("technology_analysis") or output.get("economics_analysis") or str(output)
+                else:
+                     val = str(output)
+                
+                # Update Card
+                self.q.put({"type": "card_update", "agent": agent.lower(), "content": str(val)})
+                self.q.put({"type": "turn", "payload": f"[{time_str}] [{agent}] Analysis complete ({lat:.0f}ms)."})
 
-            # 1. PLANNING PHASE
-            self.q.put({"type": "progress", "value": 20, "text": "Manager: formulating plan..."})
-            
-            # Since app_instance is synchronous, we call it and wait.
-            # Ideally, we'd hook into logs or callbacks, but for this refactor we simulate progress
-            # just before the big call, and then chunk the result.
-            
-            # We can use a timer thread to fake "thinking" progress while we wait
-            stop_progress = threading.Event()
-            def fake_progress():
-                p = 20
-                while not stop_progress.is_set() and p < 80:
-                    time.sleep(1.0)
-                    p += 2
-                    self.q.put({"type": "progress", "value": p, "text": "Agents analyzing..."})
-            
-            prog_thread = threading.Thread(target=fake_progress, daemon=True)
-            prog_thread.start()
-
-            # --- THE BIG CALL ---
-            result = app_instance.handle_request(self.request, self.context)
-            # --------------------
-            
-            stop_progress.set()
-            prog_thread.join()
-            
-            if "manager_report" not in result:
-                raise ValueError("Invalid result from backend")
-
-            # 2. EMIT EVENTS "REPLAY" STYLE
-            # Unpack the result to make it feel like a stream
-            
-            # Emit Plan
-            plan_steps = result.get("plan_summary", [])
-            for step in plan_steps:
-                self.q.put({"type": "turn", "payload": f"[MANAGER] Planned step: {step}", "index": 0})
-                time.sleep(0.3)
-            
-            # Emit Specialist Findings
-            findings = result.get("specialist_findings", {})
-            for agent, analysis in findings.items():
-                prefix = f"[{agent.upper()}]"
-                # Split analysis into chunks for readability
-                lines = analysis.split('\n')
-                summary = lines[0] if lines else "Analysis complete."
-                self.q.put({"type": "turn", "payload": f"{prefix} {summary}", "index": 0})
-                # Send full card update
-                self.q.put({"type": "card_update", "agent": agent, "content": analysis})
-                time.sleep(0.5)
-
-            # Emit Constraints
-            constraints = result.get("constraints", {})
-            self.q.put({"type": "turn", "payload": f"[CONSTRAINT] Sanity Check: {constraints.get('warnings', 'None')}", "index": 0})
-            time.sleep(0.5)
-
-            # Emit Simulation Turns
-            sim_result = result.get("simulation_result", {})
-            history = sim_result.get("simulation_history", []) if isinstance(sim_result, dict) else []
-            
-            if not history and isinstance(sim_result, str):
-                 self.q.put({"type": "turn", "payload": f"[SIMULATION] {sim_result}", "index": 0})
-
-            for idx, turn in enumerate(history):
-                # Check Pause
-                while self.control.get("paused", False):
-                    time.sleep(0.2)
-                    if self.control.get("stop", False):
-                         return
-
-                actor = turn.get("actor", "System")
-                action = turn.get("action", "No action")
-                self.q.put({"type": "turn", "payload": f"Turn {idx+1}: {actor} -> {action}", "index": idx})
+            elif e_type == "constraint":
+                is_safe = payload.get("is_safe")
+                self.q.put({"type": "turn", "payload": f"[{time_str}] [CONSTRAINT] Safety Check: {'PASSED' if is_safe else 'FAILED'}"})
+                
+            elif e_type == "turn":
+                # Simulation turn
+                turn = payload
+                actor = turn.get("actor")
+                action = turn.get("action")
+                self.q.put({"type": "turn", "payload": f"[{time_str}] [SIM] Turn {event.get('index')}: {actor}"})
+                self.q.put({"type": "turn", "payload": f"  Action: {action}"})
                 self.q.put({"type": "timeline_update", "turn": turn})
-                time.sleep(0.8) # Artificial delay for readability
+                
+            elif e_type == "done":
+                 self.q.put({"type": "done", "payload": payload})
 
-            # Finalize
-            self.q.put({"type": "progress", "value": 100, "text": "Synthesis Complete."})
-            self.q.put({"type": "done", "payload": result})
-
+        try:
+            self.q.put({"type": "turn", "payload": "[SYSTEM] Initializing secure channel..."})
+            
+            # Run the Async Manager in this thread with a new loop
+            # We use a wrapper to handle the coroutine execution
+            async def runner():
+                 return await manager_run(
+                     self.request, 
+                     self.context, 
+                     progress_callback=progress_callback
+                 )
+            
+            result = asyncio.run(runner())
+            
+            # "done" event is usually emitted by manager_run, but let's ensure we handle the result 
+            # if the loop finished but done wasn't explicitly caught or if we need to pass the full dict back
+            # The manager_run should have emitted 'done' if we implemented it there? 
+            # Checked manager_run: it emits 'done' at the end.
+            
+            # If for some reason we didn't get done (e.g. exception swallowed), we ensure it here
+            # But normally manager_run returns the dict
+            
+        except InterruptedError:
+            self.q.put({"type": "turn", "payload": "[SYSTEM] ABORTED BY USER."})
         except Exception as e:
             import traceback
             self.q.put({"type": "error", "payload": str(e), "trace": traceback.format_exc()})

@@ -2,30 +2,23 @@
 Simple helper for rolling summaries of simulation turns.
 """
 from typing import List, Optional
+from datetime import datetime
 
-def update_summary(existing_summary: str, recent_turns: List[str]) -> str:
+def update_summary(current_summary: str, new_events: List[str]) -> str:
     """
-    Updates the rolling summary with new turns.
-    In a real implementation, this would call an LLM.
-    For now, we append concisely to avoid infinite growth in a naive way,
-    or just return the concatenation if small.
-    
-    Args:
-        existing_summary: The previous summary text.
-        recent_turns: List of string representations of new turns.
-        
-    Returns:
-        New summary string.
+    Appends new events to the rolling summary. 
+    Ideally this would be an LLM call to compress, but for now we append 
+    and rely on the Simulation Agent to handle the context window.
     """
-    # Naive implementation for demo purposes:
-    # If summary is too long, we might want to truncate or placeholder.
-    # In full version: call a fast LLM to condense.
-    
-    new_content = "\n".join(recent_turns)
-    if not existing_summary:
-        return new_content
+    if not new_events:
+        return current_summary
         
-    return f"{existing_summary}\n{new_content}"
+    timestamp = datetime.now().strftime("%H:%M:%S")
+    formatted_events = "\n".join([f"[{timestamp}] {e}" for e in new_events])
+    
+    if current_summary:
+        return f"{current_summary}\n{formatted_events}"
+    return formatted_events
 
-def format_turn(turn_idx: int, actor: str, action: str) -> str:
-    return f"Turn {turn_idx} [{actor}]: {action}"
+def format_turn(turn_num: int, actor: str, action: str) -> str:
+    return f"Turn {turn_num} | {actor}: {action}"

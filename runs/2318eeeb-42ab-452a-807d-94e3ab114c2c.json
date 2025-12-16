@@ -1,0 +1,88 @@
+{
+  "run_id": "2318eeeb-42ab-452a-807d-94e3ab114c2c",
+  "request": "Parallel Test",
+  "plan": {
+    "plan_id": "b520b63b-5760-4b97-93e3-297cc22b3b20",
+    "high_level_goal": null,
+    "assumptions": [],
+    "steps": [
+      {
+        "step_id": "S1",
+        "task": "T1",
+        "assigned_agent": "SECURITY",
+        "description": null,
+        "expected_output": null,
+        "params": {}
+      },
+      {
+        "step_id": "S2",
+        "task": "T2",
+        "assigned_agent": "ECONOMICS",
+        "description": null,
+        "expected_output": null,
+        "params": {}
+      }
+    ],
+    "final_step": "SIMULATION",
+    "metadata": {}
+  },
+  "specialist_outputs": [
+    {
+      "agent": "SECURITY",
+      "step_id": "S1",
+      "output": {
+        "analysis": "Done"
+      },
+      "meta": {
+        "latency_ms": 501.3251304626465,
+        "model": "agent-delegated"
+      }
+    },
+    {
+      "agent": "ECONOMICS",
+      "step_id": "S2",
+      "output": {
+        "analysis": "Done"
+      },
+      "meta": {
+        "latency_ms": 500.9784698486328,
+        "model": "agent-delegated"
+      }
+    }
+  ],
+  "constraint_result": {
+    "is_safe": true,
+    "warnings": [],
+    "sanitized_output": {
+      "ok": true
+    },
+    "reasoning": null,
+    "ethical_flags": [],
+    "legal_flags": [],
+    "meta": {},
+    "retry_count": 0,
+    "feedback_from_judgment": null
+  },
+  "simulation_result": {
+    "simulation_id": "35c14b95-e729-4be6-8d14-13d06fcf9b81",
+    "simulation_history": [],
+    "outcomes": {
+      "summary": ""
+    },
+    "meta": {
+      "turns": 0
+    }
+  },
+  "manager_report": "Simulated Action",
+  "status": "completed",
+  "timestamps": {
+    "start": "2025-12-15T14:22:14.706913",
+    "plan_done": "2025-12-15T14:22:14.711632",
+    "specialists_done": "2025-12-15T14:22:15.218622",
+    "constraint_done": "2025-12-15T14:22:15.227470",
+    "end": "2025-12-15T14:22:15.239834"
+  },
+  "metadata": {
+    "seed": null
+  }
+}

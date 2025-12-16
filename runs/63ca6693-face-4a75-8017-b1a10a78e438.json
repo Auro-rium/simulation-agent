@@ -1,0 +1,110 @@
+{
+  "run_id": "63ca6693-face-4a75-8017-b1a10a78e438",
+  "request": "Test Request",
+  "plan": {
+    "plan_id": "7e2478af-951a-4a1e-80cd-7d210b2fb1f0",
+    "high_level_goal": null,
+    "assumptions": [],
+    "steps": [
+      {
+        "step_id": "S1",
+        "task": "T1",
+        "assigned_agent": "SECURITY",
+        "description": null,
+        "expected_output": null,
+        "params": {}
+      },
+      {
+        "step_id": "S2",
+        "task": "T2",
+        "assigned_agent": "ECONOMICS",
+        "description": null,
+        "expected_output": null,
+        "params": {}
+      }
+    ],
+    "final_step": "SIMULATION",
+    "metadata": {}
+  },
+  "specialist_outputs": [
+    {
+      "agent": "SECURITY",
+      "step_id": "S1",
+      "output": {
+        "analysis": "Security OK"
+      },
+      "meta": {
+        "latency_ms": 5.434751510620117,
+        "model": "agent-delegated"
+      }
+    },
+    {
+      "agent": "ECONOMICS",
+      "step_id": "S2",
+      "output": {
+        "analysis": "Econ OK"
+      },
+      "meta": {
+        "latency_ms": 0.31876564025878906,
+        "model": "agent-delegated"
+      }
+    }
+  ],
+  "constraint_result": {
+    "is_safe": true,
+    "warnings": [],
+    "sanitized_output": {
+      "ok": true
+    },
+    "reasoning": null,
+    "ethical_flags": [],
+    "legal_flags": [],
+    "meta": {},
+    "retry_count": 0,
+    "feedback_from_judgment": null
+  },
+  "simulation_result": {
+    "simulation_id": "2e6980bf-5313-4d01-944f-973c351cb5c4",
+    "simulation_history": [
+      {
+        "turn": 1,
+        "actor": "A",
+        "action": "Simulated Action",
+        "result": "success",
+        "meta": {}
+      },
+      {
+        "turn": 2,
+        "actor": "B",
+        "action": "Simulated Action",
+        "result": "success",
+        "meta": {}
+      },
+      {
+        "turn": 3,
+        "actor": "A",
+        "action": "Simulated Action",
+        "result": "success",
+        "meta": {}
+      }
+    ],
+    "outcomes": {
+      "summary": "[14:22:14] Turn 1 | A: Simulated Action\n[14:22:14] Turn 2 | B: Simulated Action\n[14:22:14] Turn 3 | A: Simulated Action"
+    },
+    "meta": {
+      "turns": 3
+    }
+  },
+  "manager_report": "Simulated Action",
+  "status": "completed",
+  "timestamps": {
+    "start": "2025-12-15T14:22:14.500880",
+    "plan_done": "2025-12-15T14:22:14.512453",
+    "specialists_done": "2025-12-15T14:22:14.642345",
+    "constraint_done": "2025-12-15T14:22:14.651480",
+    "end": "2025-12-15T14:22:14.680061"
+  },
+  "metadata": {
+    "seed": null
+  }
+}

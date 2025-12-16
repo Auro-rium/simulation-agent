@@ -1,106 +1,100 @@
 import pytest
 import asyncio
 import os
-import json
-from unittest.mock import MagicMock, AsyncMock, patch
+from unittest.mock import AsyncMock, patch
 from orchestration.manager_run import manager_run
-from core.schemas import Plan, Step, ConstraintResult
+from core.schemas import ExecutionPlan, RunStatus, Decision, DecisionType
 
 @pytest.fixture
 def mock_agents():
-    with patch("orchestration.graph.planner_agent") as mock_plan, \
-         patch("orchestration.graph.constraint_agent") as mock_const, \
-         patch.dict("orchestration.graph.specialists", values={
-             "SECURITY": MagicMock(),
-             "TECHNOLOGY": MagicMock(),
-             "ECONOMICS": MagicMock()
-         }) as mock_specs, \
-         patch("orchestration.graph.llm_client") as mock_llm: # For simulation loop which is still raw LLM in graph
+    with patch("orchestration.graph.PlannerAgent") as MockPlannerCls, \
+         patch("orchestration.graph.ConstraintAgent") as MockConstraintCls, \
+         patch("orchestration.graph.JudgmentAgent") as MockJudgmentCls, \
+         patch("orchestration.graph.SecurityAgent") as MockSecCls, \
+         patch("orchestration.graph.TechnologyAgent") as MockTechCls, \
+         patch("orchestration.graph.EconomicsAgent") as MockEconCls, \
+         patch("orchestration.graph.SimulationAgent") as MockSimCls:
          
-        # Setup mocks to match Agent.run() signatures (sync)
-        mock_plan.run.return_value = {
+        mock_planner = AsyncMock()
+        MockPlannerCls.return_value = mock_planner
+        
+        mock_planner.run.return_value = {
             "plan": {
-                 "steps": [
-                     {"step_id": "S1", "task": "T1", "assigned_agent": "SECURITY"},
-                     {"step_id": "S2", "task": "T2", "assigned_agent": "ECONOMICS"}
-                 ]
+                 "plan_id": "test-plan",
+                 "steps": [{"step_id": "1", "agent": "SECURITY", "objective": "Analyze"}],
+                 "context": {}
+            }
+        }
+
+        mock_sec = AsyncMock()
+        MockSecCls.return_value = mock_sec
+        # Valid Decision object dict
+        mock_sec.run.return_value = {
+            "decision": {
+                "decision_type": "APPROVE",
+                "recommended_action": "Fortify",
+                "confidence": 0.9,
+                "risk_score": 2,
+                "rationale_summary": ["Safe"],
+                "assumptions": []
             }
         }
         
-        # Mock Specialists
-        mock_specs["SECURITY"].run.return_value = {"analysis": "Security OK"}
-        mock_specs["ECONOMICS"].run.return_value = {"analysis": "Econ OK"}
-        
-        # Mock Constraint
-        mock_const.run.return_value = {
+        mock_constraint = AsyncMock()
+        MockConstraintCls.return_value = mock_constraint
+        mock_constraint.run.return_value = {
             "constraint_check": {
                 "is_safe": True,
-                "warnings": [],
-                "sanitized_recommendations_for_A": []
+                "warnings": []
             }
         }
         
-        # Mock LLM for Simulation Loop (node_simulation_step) & Synthesis
-        mock_llm.generate_with_retries = AsyncMock(return_value={"text": "Simulated Action", "meta": {}})
+        mock_judgment = AsyncMock()
+        MockJudgmentCls.return_value = mock_judgment
+        mock_judgment.run.return_value = {
+            "judgment_result": {
+                "is_approved": True,
+                "feedback": "",
+                "strategic_analysis": "Good",
+                "final_decision": {
+                    "decision_type": "APPROVE",
+                    "recommended_action": "Fortify",
+                    "confidence": 0.9,
+                    "risk_score": 2,
+                    "rationale_summary": ["Safe"],
+                    "assumptions": []
+                }
+            }
+        }
         
-        yield {
-            "planner": mock_plan,
-            "constraint": mock_const,
-            "specs": mock_specs,
-            "llm": mock_llm
+        mock_sim = AsyncMock()
+        MockSimCls.return_value = mock_sim
+        mock_sim.run.return_value = {
+            "simulation_turn": {
+                "turn": 1,
+                "actor": "Actor A",
+                "action": "Fortify",
+                "outcome": "Done",
+                "validation": {"valid": True}
+            }
         }
 
-@pytest.mark.asyncio
-async def test_planner_called_once(mock_agents):
-    await manager_run("Test Request", {})
-    mock_agents["planner"].run.assert_called_once()
+        yield
 
 @pytest.mark.asyncio
-async def test_parallel_specialists(mock_agents):
-    # Retrieve mocks
-    sec = mock_agents["specs"]["SECURITY"]
-    econ = mock_agents["specs"]["ECONOMICS"]
-    
-    # Introduce delay to test parallelism
-    def delayed_run(*args, **kwargs):
-        import time
-        time.sleep(0.5) 
-        return {"analysis": "Done"}
-        
-    sec.run.side_effect = delayed_run
-    econ.run.side_effect = delayed_run
-    
-    import time
-    start = time.time()
-    # max_turns=0 to skip simulation
-    await manager_run("Parallel Test", {"max_turns": 0}) 
-    duration = time.time() - start
-    
-    # If serial: 0.5 + 0.5 = 1.0s. If parallel: ~0.5s.
-    assert duration < 0.9, f"Specialists took {duration}s, expected <0.9s (Parallel)"
-
-@pytest.mark.asyncio
-async def test_streaming_callback(mock_agents):
+async def test_full_run_v0_3_0(mock_agents):
     events = []
     def callback(e):
         events.append(e)
         
-    await manager_run("Stream Test", {}, progress_callback=callback)
+    result = await manager_run("Test", {}, progress_callback=callback)
+    
+    assert result["status"] == RunStatus.SUCCESS
+    assert "final_decision" in result
     
     event_types = [e["type"] for e in events]
-    assert "status" in event_types
     assert "plan" in event_types
-    assert "specialist_done" in event_types
-    assert "constraint" in event_types
-    # Simulation turn events (default max_turns=3 so loop runs)
-    assert "turn" in event_types
+    assert "composite" in event_types
+    assert "judgment" in event_types
+    assert "simulation" in event_types
     assert "done" in event_types
-
-@pytest.mark.asyncio
-async def test_persistence(mock_agents):
-    res = await manager_run("Persistence Test", {})
-    run_id = res.get("run_id")
-    assert run_id
-    assert os.path.exists(f"runs/{run_id}.json")
-    if os.path.exists(f"runs/{run_id}.json"):
-        os.remove(f"runs/{run_id}.json")

@@ -1,55 +1,57 @@
 from typing import Any, Dict, List
-from core.schemas import ConstraintResult
+from core.schemas import ConstraintResult, CompositeDecision, Decision, DecisionType
 from agents.base_agent import BaseAgent
 
 class ConstraintAgent(BaseAgent):
     def __init__(self):
         super().__init__("constraint")
 
-    def run(self, inputs: Dict[str, Any]) -> Dict[str, Any]:
+    async def run(self, inputs: Dict[str, Any]) -> Dict[str, Any]:
         """
-        Validates and sanitizes the combined inputs from specialist agents.
+        Validates the CompositeDecision from DecisionAggregator.
         """
-        specialist_outputs = inputs.get("specialist_outputs", {})
+        composite_decision = inputs.get("composite_decision", {}) # Dict or Pydantic
         
         prompt = f"""
         {CONSTRAINT_SYSTEM_PROMPT}
         
         ---
-        SPECIALIST ASSESSMENTS:
-        {specialist_outputs}
+        COMPOSITE DECISION (from Specialists):
+        {composite_decision}
+        
+        PREVIOUS JUDGMENT FEEDBACK (If any - Address this):
+        {inputs.get('judgment_feedback', 'None')}
         """
         
-        result = self.llm_client.generate_structured_output(
+        result = await self.llm_client.generate_structured_output(
             prompt,
             response_schema=ConstraintResult.model_json_schema(),
-            model_type="reasoning"
+            model="llama-3.3-70b-versatile"
         )
         return {"constraint_check": result}
 
 CONSTRAINT_SYSTEM_PROMPT = """You are CONSTRAINT_AGENT.
 
 ROLE
-- You are the moral, rule-based, and first-principles constraint checker.
-- You DO NOT fully redesign strategies; you correct, prune, and constrain.
+- You are the Safety & Compliance Officer.
+- You validate the `CompositeDecision` proposed by specialists.
+- You DO NOT formulate strategy. You PASS or FAIL it.
 
 INPUT
-- Bundled outputs from SECURITY_ANALYSIS_AGENT, TECHNOLOGY_ANALYSIS_AGENT, ECONOMICS_SPECIALIST_AGENT.
-- Clear statement of Actor A's goals and any explicit constraints.
+- a `CompositeDecision` object.
 
 OUTPUT
-Return:
-
-{
-  "ethical_flags": ["...", "..."],          // what might be morally problematic?
-  "legal_or_policy_flags": ["...", "..."],  // generic, non-jurisdiction-specific
-  "human_impact_analysis": ["...", "..."],  // likely impact on people, wellbeing
-  "incoherence_or_contradictions": ["...", "..."],
-  "required_modifications": ["...", "..."], // how to fix flagged issues
-  "sanitized_recommendations_for_A": ["...", "..."]
-}
+- `ConstraintResult`
+    - is_safe: bool
+    - ethical_flags: list[str]
+    - legal_flags: list[str]
+    - warnings: list[str]
+    - sanitized_output: (Optional) A safer version of the Decision if minor tweaks work.
+    - retry_count: (Passthrough)
+    - feedback_from_judgment: (Passthrough)
 
 PRINCIPLES
-- Prioritize human wellbeing, safety, and non-harm.
-- Avoid recommending or enabling real-world harm or unlawful actions.
-- Enforce first-principles coherence: no magical thinking, no contradictions."""
+- If risk_score > 8, FAIL immediately.
+- If illegal (Geneva Convention, etc.), FAIL.
+- If valid but risky, PASS with warnings.
+"""

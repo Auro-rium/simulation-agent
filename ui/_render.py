@@ -8,23 +8,44 @@ def render_terminal_line(line: str) -> str:
     color = "#e0e0e0" # Default gray
     prefix = ""
     
-    if "SECURITY" in line:
+    # Regex for timestamp [HH:MM:SS]
+    import re
+    time_match = re.match(r"(\[\d{2}:\d{2}:\d{2}\]) (.*)", line)
+    timestamp = ""
+    content = line
+    if time_match:
+        timestamp = time_match.group(1)
+        content = time_match.group(2)
+
+    if "[SECURITY]" in content:
         color = "#ff4b4b" # Red
         prefix = "[SECURITY]"
-    elif "TECHNOLOGY" in line:
-        color = "#1f77b4" # Blue
+    elif "[TECH]" in content or "[TECHNOLOGY]" in content:
+        color = "#00d4ff" # Cyan Neon
         prefix = "[TECH]"
-    elif "ECONOMICS" in line:
-        color = "#2ca02c" # Green
+    elif "[ECON]" in content or "[ECONOMICS]" in content:
+        color = "#00ff00" # Bright Green
         prefix = "[ECON]"
-    elif "MANAGER" in line:
-        color = "#d69e2e" # Gold
-        prefix = "[MANAGER]"
+    elif "[MANAGER]" in content or "[PLANNER]" in content:
+        color = "#ffd700" # Gold
+        prefix = "[COMMAND]"
+    elif "[SIM]" in content:
+        color = "#d800ff" # Magenta Neon
+        prefix = "[SIM]"
+    elif "[SYSTEM]" in content:
+        color = "#888888"
+        prefix = "[SYS]"
     
     # Strip existing brackets if any to avoid double prefixing
-    clean_line = line.replace("[SECURITY]", "").replace("[TECH]", "").replace("[ECON]", "").replace("[MANAGER]", "")
+    clean_line = content.replace("[SECURITY]", "").replace("[TECH]", "").replace("[ECON]", "").replace("[MANAGER]", "").replace("[PLANNER]", "").replace("[SIM]", "").replace("[SYSTEM]", "")
     
-    return f'<div style="color: {color}; font-family: monospace; margin-bottom: 4px;"><strong>{prefix}</strong> {clean_line}</div>'
+    return f'''
+    <div style="font-family: 'Fira Code', monospace; margin-bottom: 4px; border-left: 2px solid {color}; padding-left: 8px;">
+        <span style="color: #666; font-size: 0.8em;">{timestamp}</span>
+        <strong style="color: {color};">{prefix}</strong> 
+        <span style="color: #e0e0e0;">{clean_line}</span>
+    </div>
+    '''
 
 def render_timeline(history: List[Dict[str, Any]]):
     """Renders a timeline chart of utility/actions."""

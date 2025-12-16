@@ -6,38 +6,40 @@ class SimScenario(BaseModel):
     name: str
     assumptions: List[str]
     expected_behaviour: Dict[str, str]
-    qualitative_payoffs: Dict[str, str]
-    stability_assessment: str
-
-class SimOutput(BaseModel):
-    scenarios: List[SimScenario]
-    comparison_summary: str
-    recommended_strategy_for_A: List[str]
-    key_risks_and_contingencies: List[str]
+from core.schemas import SimulationResult, SimulationTurn, ValidationResult, Decision
 
 class SimulationAgent(BaseAgent):
     def __init__(self):
         super().__init__("simulation")
 
-    def run(self, inputs: Dict[str, Any]) -> Dict[str, Any]:
+    async def run(self, inputs: Dict[str, Any]) -> Dict[str, Any]:
         """
-        Runs conceptual simulations and comparative scenario analyses.
+        Executes a turn-based simulation enforcing strict state.
+        Now receives a FINAL DECISION (Action) to simulate.
         """
-        actors = inputs.get("actors", {"A": "Abstract A", "B": "Abstract B", "C": "Abstract C"})
-        strategies = inputs.get("strategies", {})
+        final_decision_dict = inputs.get("final_decision", {})
+        current_state = inputs.get("simulation_state", {}) # Current world state
+        history = inputs.get("history", [])
         
+        # We need the decision object
+        try:
+             # It might be passed as dict
+             decision = Decision(**final_decision_dict)
+        except Exception:
+             # Fallback or error
+             return {"error": "Invalid Decision Object"}
+
         prompt = f"""
         {SIMULATION_SYSTEM_PROMPT}
         
-        ---
         ACTORS: {actors}
         STRATEGIES / CONSTRAINTS: {strategies}
         """
         
         result = self.llm_client.generate_structured_output(
             prompt,
-            response_schema=SimOutput.model_json_schema(),
-            model_type="reasoning"
+            response_schema=SimulationResult.model_json_schema(),
+            model="llama-3.3-70b-versatile"
         )
         
         # result is a dict, so we handle it as such

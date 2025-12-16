@@ -1,24 +1,12 @@
 from typing import Any, Dict
-from pydantic import BaseModel, Field
+from core.schemas import Decision, DecisionType
 from agents.base_agent import BaseAgent
-
-class TimeHorizons(BaseModel):
-    short_term: str
-    medium_term: str
-    long_term: str
-
-class TechAssessment(BaseModel):
-    critical_technologies: list[str]
-    feasibility_assessment: str
-    time_horizons: TimeHorizons
-    tech_advantages_for_A: list[str]
-    tech_risks_or_dependencies: list[str]
 
 class TechnologyAgent(BaseAgent):
     def __init__(self):
         super().__init__("technology")
 
-    def run(self, inputs: Dict[str, Any]) -> Dict[str, Any]:
+    async def run(self, inputs: Dict[str, Any]) -> Dict[str, Any]:
         instruction = inputs.get("instruction")
         context = inputs.get("context", {})
         
@@ -27,41 +15,29 @@ class TechnologyAgent(BaseAgent):
 
         ---
         SCENARIO CONTEXT: {context}
-        
         SPECIFIC INSTRUCTION: {instruction}
         """
         
-        result = self.llm_client.generate_structured_output(
+        result = await self.llm_client.generate_structured_output(
             prompt,
-            response_schema=TechAssessment.model_json_schema(),
-            model_type="fast"
+            response_schema=Decision.model_json_schema(),
+            model="llama-3.1-8b-instant"
         )
-        return {"technology_analysis": result}
+        return {"decision": result}
 
 TECHNOLOGY_SYSTEM_PROMPT = """You are TECHNOLOGY_ANALYSIS_AGENT.
 
 ROLE
-- Analyze technological aspects of the scenario for Actor A vs actors B and C.
+- Evaluate feasibility, timelines, and technical advantage.
+- Output a typed DECISION object.
 
-INPUT
-- Scenario description
-- Goals for Actor A
-
-OUTPUT
-Return:
-
-{
-  "critical_technologies": ["...", "..."],
-  "feasibility_assessment": "Short narrative",
-  "time_horizons": {
-    "short_term": "...",
-    "medium_term": "...",
-    "long_term": "..."
-  },
-  "tech_advantages_for_A": ["...", "..."],
-  "tech_risks_or_dependencies": ["...", "..."]
-}
+OUTPUT SCHEMA
+- decision_type: APPROVE (Feasible), REJECT (Impossible/Too Risky), MODIFY (Needs R&D), ABORT.
+- recommended_action: The technical path forward.
+- risk_score: 0-10 (Failure risk).
+- rationale_summary: Max 3 key technical constraints.
 
 PRINCIPLES
-- Anchor assessments in feasibility, speed, cost, and robustness.
-- Consider how B and C might catch up or leapfrog."""
+- Be realistic about timelines.
+- Magic tech = ABORT.
+"""

@@ -1,0 +1,43 @@
+{
+  "run_id": "3e0561b8-8546-4ddb-9887-d78ab0013649",
+  "request": "Analyze stability given: Global energy crisis. High inflation. Rising geopolitical tensions.",
+  "plan": {
+    "plan_id": "baf93e2e-34ba-49b2-8c8d-6264676b7c46",
+    "high_level_goal": null,
+    "assumptions": [],
+    "steps": [],
+    "final_step": "SIMULATION",
+    "metadata": {}
+  },
+  "specialist_outputs": [],
+  "constraint_result": {
+    "is_safe": false,
+    "warnings": [],
+    "sanitized_output": null,
+    "reasoning": null,
+    "ethical_flags": [],
+    "legal_flags": [],
+    "meta": {}
+  },
+  "simulation_result": {
+    "simulation_id": "b392d7a2-d0b1-4852-8a8d-d6a40fbcde47",
+    "simulation_history": [],
+    "outcomes": {
+      "summary": ""
+    },
+    "meta": {
+      "turns": 0
+    }
+  },
+  "manager_report": "## Final Report: Analysis of Stability",
+  "status": "completed",
+  "timestamps": {
+    "start": "2025-12-10T12:28:32.919794",
+    "plan_done": "2025-12-10T12:28:39.698292",
+    "constraint_done": "2025-12-10T12:28:52.283471",
+    "end": "2025-12-10T12:29:01.872060"
+  },
+  "metadata": {
+    "seed": null
+  }
+}

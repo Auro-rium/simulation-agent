@@ -1,0 +1,36 @@
+{
+  "run_id": "4f3764a9-3a4c-4500-959b-e52679e81559",
+  "status": "SUCCESS",
+  "final_decision": {
+    "decision_type": "APPROVE",
+    "recommended_action": "Fortify",
+    "confidence": 0.9,
+    "risk_score": 2,
+    "rationale_summary": [
+      "Safe"
+    ],
+    "assumptions": [],
+    "meta": {}
+  },
+  "simulation_result": {
+    "simulation_id": "d40a1e9d-0533-4977-b725-64c8ccbacd73",
+    "final_state": {},
+    "outcome": "COMPLETED",
+    "stability_score": 1.0,
+    "turn_count": 3,
+    "history": [],
+    "meta": {}
+  },
+  "audit_trail": {
+    "plan_id": "test-plan",
+    "retry_count": 1,
+    "seed": null
+  },
+  "timestamps": {
+    "start": "2025-12-16T14:27:03.134672",
+    "plan_done": "2025-12-16T14:27:03.142689",
+    "specialists_done": "2025-12-16T14:27:03.209795",
+    "constraint_done": "2025-12-16T14:27:03.212713",
+    "end": "2025-12-16T14:27:03.217906"
+  }
+}

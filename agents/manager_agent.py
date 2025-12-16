@@ -113,6 +113,7 @@ class ManagerAgent(BaseAgent):
         Produce the FINAL ANSWER to the user now.
         """
         
+        # Legacy sync wrapper usage
         final_text = self.llm_client.generate_text(synthesis_prompt, model_type="reasoning")
 
         final_response = {

@@ -55,10 +55,30 @@ with st.sidebar:
     st.markdown("---")
     
     # Inputs
-    actor_a = st.text_input("Actor A (Focal)", "Union of Pacific States")
-    actor_b = st.text_input("Actor B (Rival)", "Eurasian Hegemony")
-    actor_c = st.text_input("Actor C (Neutral)", "Non-Aligned Alliance")
-    global_context = st.text_area("Global Intelligence", "Global energy crisis. High inflation. Rising geopolitical tensions.")
+    # Scenario Presets
+    CMD_PRESETS = {
+        "Custom": {
+            "A": "Union of Pacific States", "B": "Eurasian Hegemony", "C": "Non-Aligned Alliance",
+            "ctx": "Global energy crisis. High inflation. Rising geopolitical tensions."
+        },
+        "US vs China vs India (Tech War)": {
+            "A": "United States", "B": "China", "C": "India",
+            "ctx": "2028: AI Semiconductor Embargo Escalation. US tightens export controls. China retaliates with rare earth ban. India positions as neutral manufacturing hub but faces border pressure."
+        },
+        "Arctic Melt Standoff (2032)": {
+            "A": "Nordic Alliance", "B": "Eurasian Energy Bloc", "C": "Trans-Atlantic Union",
+            "ctx": "Arctic sea ice collapse opens Northern Sea Route. Dispute over drilling rights and military passage. Drone shot down near oil rig."
+        }
+    }
+    
+    selected_preset = st.selectbox("Load Scenario", list(CMD_PRESETS.keys()))
+    preset_data = CMD_PRESETS[selected_preset]
+    
+    # Inputs (Populated by Preset)
+    actor_a = st.text_input("Actor A (Focal)", preset_data["A"])
+    actor_b = st.text_input("Actor B (Rival)", preset_data["B"])
+    actor_c = st.text_input("Actor C (Neutral)", preset_data["C"])
+    global_context = st.text_area("Global Intelligence", preset_data["ctx"])
     
     st.markdown("---")
     

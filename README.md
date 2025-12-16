@@ -1,175 +1,133 @@
-# Diplomatic Simulation Agent 🌍
+# Diplomatic Simulation Agent 🌍 (v0.3.1 Production)
 
-> **v0.2.0** - Advanced multi-agent orchestration system for strategic simulation and analysis.
+> **HARDENED PRODUCTION SYSTEM**: Features Strict Typed Decisions, Deterministic Aggregation, and Enforced LLM Safety/Token Budgets.
 
-An enterprise-grade multi-agent system designed to model, analyze, and simulate complex strategic scenarios between abstract actors. Built with **Google Vertex AI (Gemini 2.5)**, **LangGraph**, and **Streamlit**.
+An enterprise-grade multi-agent system designed to model, analyze, and simulate complex strategic scenarios between abstract actors. Built with **Groq (Llama 3)**, **LangGraph**, and **Streamlit**.
 
-![Python](https://img.shields.io/badge/python-3.12-blue)
-![Vertex AI](https://img.shields.io/badge/Vertex%20AI-Gemini%202.5-orange)
-![LangGraph](https://img.shields.io/badge/LangGraph-Orchestration-green)
-![Streamlit](https://img.shields.io/badge/UI-Streamlit-red)
+![Groq](https://img.shields.io/badge/Groq-Llama%203-blueviolet)
+![LangGraph](https://img.shields.io/badge/Orchestration-LangGraph-blue)
+![Python](https://img.shields.io/badge/Python-3.12-yellow)
+![Status](https://img.shields.io/badge/Status-Production%20Hardened-green)
 
----
+## 🚀 Quick Start
 
-## 🚀 Overview
-
-This system enables sophisticated scenario analysis through a declarative graph-based orchestration architecture. Define a scenario (e.g., "Trade Agreement under Inflation"), specify abstract actors (A, B, C), and let specialized AI agents decompose, analyze, constrain, and simulate outcomes.
-
-### Key Features (v0.2.0)
-
-*   **Declarative Orchestration**: LangGraph-based StateGraph for maintainable, transparent workflows
-*   **Parallel Specialist Execution**: Concurrent analysis across Security, Technology, and Economics domains
-*   **Intelligent Model Routing**: Flash models for speed, Pro models for reasoning quality
-*   **SHA256 File-Based Caching**: Prevents redundant LLM calls across runs
-*   **Exponential Backoff Retries**: Robust error handling with configurable timeouts
-*   **Real-Time Immersive UI**: "Cyberpunk" terminal aesthetic with live latency metrics and event streaming
-*   **Thread-Safe Async Architecture**: Robust event loop handling for concurrent simulations
-*   **Ethical Constraint Enforcement**: Dedicated agent for safety, coherence, and harm prevention
-*   **Turn-Based Simulation**: Game-theoretic multi-actor negotiation modeling
-
----
-
-## 🏗️ Architecture (v0.2.0)
-
-The system uses a **StateGraph** orchestration pattern with conditional edges and parallel execution:
-
-```mermaid
-graph TD
-    Start([User Request]) --> Plan[Planner Agent]
-    Plan --> Specialists[Parallel Specialists]
-    
-    Specialists --> Sec[Security Agent]
-    Specialists --> Tech[Technology Agent]
-    Specialists --> Econ[Economics Agent]
-    
-    Sec --> Gather[Gather Results]
-    Tech --> Gather
-    Econ --> Gather
-    
-    Gather --> Constraint[Constraint Agent]
-    
-    Constraint -->|Safe| SimCheck{Max Turns > 0?}
-    Constraint -->|Unsafe| Synthesize[Synthesize Report]
-    
-    SimCheck -->|Yes| SimLoop[Simulation Turn]
-    SimCheck -->|No| Synthesize
-    
-    SimLoop --> LoopCheck{Continue?}
-    LoopCheck -->|Yes| SimLoop
-    LoopCheck -->|No| Synthesize
-    
-    Synthesize --> End([Final Report])
+### 1. Installation
+```bash
+python3 -m venv .venv
+source .venv/bin/activate
+pip install -r requirements.txt
 ```
 
-### Component Breakdown
+### 2. Configuration
+Create a `.env` file:
+```env
+# Required for LLM
+GROQ_API_KEY=gsk_...
 
-| Layer | Components | Responsibility |
-|-------|------------|----------------|
-| **Orchestration** | `graph.py`, `manager_run.py` | StateGraph definition, streaming events |
-| **Agents** | `planner_agent.py`, `*_agent.py` | Domain-specific LLM-powered analysis |
-| **Core** | `schemas.py`, `summarizer.py` | Pydantic models, utility functions |
-| **LLM** | `llm_client.py` | Async Vertex AI client with caching/retries |
-| **UI** | `app.py`, `_worker.py`, `_render.py` | Streamlit interface with threaded execution |
+# Optional Observability
+LANGCHAIN_TRACING_V2=true
+LANGCHAIN_API_KEY=lsv2_...
+```
 
----
-
-## 🛠️ Installation
-
-### Prerequisites
-*   **Python 3.12+**
-*   **Google Cloud Project** with Vertex AI API enabled
-*   **Application Default Credentials** configured (`gcloud auth application-default login`)
-
-### Setup
-
-1.  **Clone the repository**:
-    ```bash
-    git clone https://github.com/Auro-rium/simulation-agent.git
-    cd simulation-agent
-    ```
-
-2.  **Create virtual environment**:
-    ```bash
-    python -m venv .venv
-    source .venv/bin/activate  # On Windows: .venv\Scripts\activate
-    ```
-
-3.  **Install dependencies**:
-    ```bash
-    pip install -r requirements.txt
-    # Or for editable install:
-    pip install -e .
-    ```
-
-4.  **Configure Environment**:
-    Create a `.env` file in the project root:
-    ```env
-    GOOGLE_CLOUD_PROJECT=your-project-id
-    VERTEX_AI_LOCATION=us-central1
-    
-    # Optional: LangSmith tracing
-    LANGCHAIN_TRACING_V2=true
-    LANGCHAIN_API_KEY=your-langsmith-key
-    ```
-
----
-
-## 🖥️ Usage
-
-### 1. Interactive Web UI (Recommended)
-
+### 3. Run the UI
 ```bash
 streamlit run ui/app.py
 ```
 
-*   **Mission Control**: Configure actors, global context, and max simulation turns
-*   **Real-Time Terminal**: Watch agents execute with color-coded output
-*   **Agent Network**: Live status cards for Security, Technology, Economics
-*   **Strategic Timeline**: Visual simulation turn-by-turn breakdown
+---
 
-### 2. API Server
+### 🧠 **Real Scenario Input**
+Copy-paste this into the **Global Intelligence** field in the UI to see the agents in action:
 
-```bash
-python scripts/run_server.py
-```
-
-Endpoints:
-*   `POST /analyze` - Submit a simulation request
-*   `GET /stream/{run_id}` - (Placeholder) SSE event stream
-
-### 3. Programmatic Usage
-
-```python
-from orchestration.manager_run import manager_run
-import asyncio
-
-async def main():
-    result = await manager_run(
-        user_request="Analyze resource treaty between A, B, C",
-        context={
-            "actors": {"A": "Union Pacific", "B": "Eurasian Alliance", "C": "Neutral Bloc"},
-            "max_turns": 5
-        },
-        seed=42  # For reproducible results
-    )
-    print(result["manager_report"])
-
-asyncio.run(main())
-```
+> **Scenario: The Arctic Melt Standoff (2032)**
+> 
+> The Arctic sea ice has receded faster than predicted, opening the Northern Sea Route permanently. 
+> **Actor A (The User)**: The "Nordic Alliance" wants to declare the route an international preservation zone, banning heavy military traffic.
+> **Actor B**: The "Eurasian Energy Bloc" claims sovereignty and has moved drilling platforms into disputed waters.
+> **Actor C**: The "Trans-Atlantic Trade Union" stays neutral but demands free passage for cargo ships.
+> 
+> **Crisis**: A Nordic Alliance drone was shot down near a Eurasian oil rig yesterday. Tensions are at DEFCON 3.
 
 ---
 
-## 🤖 Agent Specifications
+### 🧠 Architecture (v0.4.1)
+The system employs a **Decision-Centric** architecture where agents exchange typed Pydantic objects (`Decision`, `ExecutionPlan`) rather than free text.
 
-| Agent | Model | Input | Output | Purpose |
-|-------|-------|-------|--------|---------|
-| **Planner** | `gemini-2.5-pro` | User request + Context | Structured `Plan` with steps | Decomposes problem into specialist tasks |
-| **Security** | `gemini-2.5-flash` | Task instruction | Risk analysis, alliances, stability | Geopolitical & strategic assessment |
-| **Technology** | `gemini-2.5-flash` | Task instruction | Feasibility, timelines, leverage | Technical capability analysis |
-| **Economics** | `gemini-2.5-flash` | Task instruction | Costs, incentives, trade-offs | Economic modeling |
-| **Constraint** | `gemini-2.5-pro` | Specialist outputs | Safety validation | Ethical/coherence enforcement |
-| **Simulation** | LLM in Loop | Actor state, history | Turn actions | Multi-turn negotiation modeling |
-| **Manager** | `gemini-2.5-pro` | All artifacts | Executive summary | Final synthesis |
+### Core Components
+*   **LLM Client**: Hardened client using **Groq** for ultra-low latency.
+    *   **Reasoning Model**: `llama-3.3-70b-versatile` (Planning, Judgment, Simulation)
+    *   **Fast Model**: `llama-3.1-8b-instant` (Specialist Analysis)
+    *   **Strict JSON**: Enforced via Groq `json_object` mode.
+    *   **Caching**: Deterministic caching in `cache/` to prevent re-running identical queries.
+
+*   **Orchestration**: `ManagerAgent` coordinates the pipeline:
+    1.  **Planner**: Decomposes request into parallel sub-tasks.
+    2.  **Specialists**: Security, Economics, Technology agents run in parallel.
+    3.  **Constraint**: Validates specialist outputs against safety/ethics rules.
+    4.  **Judgment**: Evaluates the plan's feasibility (First Principles).
+    5.  **Simulation**: Runs a game-theoretic simulation of the approved strategy.
+
+```mermaid
+graph TD
+    User[User Request] --> Plan[Planner Agent]
+    Plan -->|ExecutionPlan| Specialists
+    
+    subgraph "Parallel Specialist Analysis"
+        Specialists --> Sec[Security Agent]
+        Specialists --> Tech[Technology Agent]
+        Specialists --> Econ[Economics Agent]
+    end
+    
+    Sec -->|Decision| Aggregator
+    Tech -->|Decision| Aggregator
+    Econ -->|Decision| Aggregator
+    
+    Aggregator -->|CompositeDecision| Constraint[Constraint Agent]
+    
+    Constraint -->|Valid| Judgment[Judgment Agent]
+    Constraint -->|Unsafe| Aggregator
+    
+    Judgment -->|Approve| Sim[Simulation Agent]
+    Judgment -->|Reject| Constraint
+    
+    Sim -->|State Update| Final[Final Report]
+```
+
+### Key Components
+1.  **Typed Decisions**: Agents output `Decision(type=APPROVE, risk_score=8, ...)` objects.
+2.  **Deterministic Aggregation**: No LLM "vibes". Conflicts are resolved by rule-based logic (e.g., Risk > 8 = ABORT).
+3.  **Simulation Enforcement**: The `SimulationAgent` executes the *Final Decision* against strict state rules. Illegal moves are rejected.
+
+---
+
+## 🛠️ Troubleshooting
+
+### Common Issues
+
+1.  **`GROQ_API_KEY not found`**
+    *   **Fix**: Ensure you have exported the key: `export GROQ_API_KEY=gsk_...` or added it to `.env`.
+
+2.  **`RateLimitError`**
+    *   **Fix**: The app handles retries for transient errors. If persistent, check your Groq tier limits.
+
+3.  **`ImportError`**
+    *   **Fix**: Ensure the virtual environment is active: `source .venv/bin/activate`.
+
+---
+
+## 🧪 Testing & Verification
+
+The system includes a hardened test suite verifying the architecture and LLM resilience.
+
+```bash
+# Run the full suite (Orchestration + LLM Hardening)
+pytest tests/
+```
+
+**What is tested?**
+*   **LLM Resilience**: Verifies token caps, safety blocks, and anti-CoT prompts.
+*   **Replayability**: Verifies that `seed=12345` produces identical decision objects.
+*   **Orchestration**: Verifies the graph flows from Plan -> Judgment -> Simulation correctly.
 
 ---
 
@@ -177,145 +135,15 @@ asyncio.run(main())
 
 ```text
 simulation-agent/
-├── agents/              # Specialist agent implementations
-│   ├── base_agent.py    # Shared LLM client & logging
-│   ├── planner_agent.py
-│   ├── security_agent.py
-│   ├── technology_agent.py
-│   ├── economics_agent.py
-│   ├── constraint_agent.py
-│   └── simulation_agent.py
-├── core/                # Data models & utilities
-│   ├── schemas.py       # Pydantic models (Plan, Report, etc.)
-│   └── summarizer.py    # Rolling summary helpers
-├── llm/                 # LLM abstraction layer
-│   └── llm_client.py    # Async Vertex AI client (caching, retries)
-├── orchestration/       # Graph & execution layer
-│   ├── graph.py         # LangGraph StateGraph definition
-│   ├── manager_run.py   # Execution loop with streaming
-│   ├── manager.py       # Backward-compatible wrapper
-│   ├── app.py           # UI adapter (schema transformation)
-│   └── api.py           # FastAPI endpoints
-├── ui/                  # Streamlit frontend
-│   ├── app.py           # Main UI application
-│   ├── _worker.py       # Threaded backend calls
-│   ├── _render.py       # UI component helpers
-│   └── _schema.py       # UI-specific types
-├── scripts/             # Entry points
-│   └── run_server.py    # Uvicorn launcher
-├── tests/               # Unit tests
-│   └── test_manager_run.py
-├── runs/                # Persisted results (JSON)
-├── cache/               # LLM response cache
-├── .env                 # Environment variables (not in repo)
-├── pyproject.toml       # Project metadata
-├── requirements.txt     # Dependencies
-└── README.md            # This file
+├── agents/              # Specialist Agents (Security, Tech, Econ, etc.)
+├── core/                # Schemas (Decision, RunStatus) & Aggregator logic
+├── llm/                 # Hardened LLMClient (v0.4.1)
+├── orchestration/       # LangGraph definition & state management
+├── ui/                  # Streamlit Interface
+├── tests/               # Pytest Suite
+└── requirements.txt     # Dependencies
 ```
 
 ---
 
-## 🧪 Testing
-
-Run the test suite:
-
-```bash
-pytest tests/
-```
-
-Key test coverage:
-*   **Graph Execution**: `test_planner_called_once`, `test_streaming_callback`
-*   **Parallel Performance**: `test_parallel_specialists` (verifies concurrency)
-*   **Persistence**: `test_persistence` (JSON artifact storage)
-
----
-
-## 🔧 Configuration
-
-### Environment Variables
-| Variable | Required | Default | Description |
-|----------|----------|---------|-------------|
-| `GOOGLE_CLOUD_PROJECT` | Yes | - | GCP project ID |
-| `VERTEX_AI_LOCATION` | Yes | - | Vertex AI region (e.g., `us-central1`) |
-| `LANGCHAIN_TRACING_V2` | No | `false` | Enable LangSmith tracing |
-| `LANGCHAIN_API_KEY` | No | - | LangSmith API key |
-| `PORT` | No | `8000` | API server port |
-
-### Context Parameters
-Pass these in the `context` dict when calling `manager_run`:
-
-```python
-context = {
-    "actors": {"A": "Actor A Name", "B": "Actor B Name"},
-    "max_turns": 3,         # Simulation iterations
-    "strategies": {},       # Initial strategy constraints
-}
-```
-
----
-
-## 🚀 Performance Optimizations
-
-### v0.2.0 Improvements
-*   **40% faster specialist phase**: Parallel execution via `asyncio.gather`
-*   **Cache hit rate ~60%**: File-based SHA256 caching on repeated prompts
-*   **Reduced timeout errors**: Exponential backoff with 60s timeout
-*   **Model cost optimization**: Flash for specialists (-70% cost vs Pro)
-
-### Benchmarks (3 specialists, 3 simulation turns)
-| Metric | v0.1.0 (Serial) | v0.2.0 (Parallel) | Improvement |
-|--------|-----------------|-------------------|-------------|
-| Specialist Phase | ~15s | ~5s | 67% faster |
-| Total E2E | ~45s | ~30s | 33% faster |
-| LLM API Calls | 12 | 8 (cached) | 33% reduction |
-
----
-
-## 🛣️ Roadmap
-
-### v0.3.0 (Planned)
-- [ ] True real-time streaming via WebSockets
-- [ ] LLM-based rolling summarization (replace naive concatenation)
-- [ ] Agent memory & multi-session context
-- [ ] Export results to PDF/Markdown
-- [ ] Multi-language support
-
-### v0.4.0 (Future)
-- [ ] Fine-tuned domain models
-- [ ] Multi-modal input (images, PDFs)
-- [ ] Collaborative editing UI
-- [ ] Deployment templates (GCP Cloud Run, AWS ECS)
-
----
-
-## 🤝 Contributing
-
-Contributions are welcome! Please:
-1. Fork the repository
-2. Create a feature branch (`git checkout -b feature/amazing-feature`)
-3. Commit your changes (`git commit -m 'Add amazing feature'`)
-4. Push to the branch (`git push origin feature/amazing-feature`)
-5. Open a Pull Request
-
----
-
-## 📄 License
-
-This project is licensed under the MIT License - see the [LICENSE](LICENSE) file for details.
-
----
-
-## 🔗 Links
-
-*   **GitHub**: [Auro-rium/simulation-agent](https://github.com/Auro-rium/simulation-agent)
-*   **Issues**: [Report a bug](https://github.com/Auro-rium/simulation-agent/issues)
-*   **LangGraph Docs**: [langchain-ai.github.io/langgraph](https://langchain-ai.github.io/langgraph/)
-*   **Vertex AI**: [cloud.google.com/vertex-ai](https://cloud.google.com/vertex-ai)
-
----
-
-## 📧 Support
-
-For questions or support, please open an issue on GitHub or contact the maintainers.
-
-**Built with ❤️ using Google Cloud Vertex AI & LangGraph**
+**Built with Groq & LangGraph** | *v0.4.1 Production Build*

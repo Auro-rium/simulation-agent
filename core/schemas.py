@@ -1,72 +1,115 @@
-import uuid
 from typing import Any, Dict, List, Optional, Literal
+from enum import Enum
 from pydantic import BaseModel, Field, field_validator
-from datetime import datetime
+import uuid
 
-class Step(BaseModel):
-    step_id: str
-    task: str
-    assigned_agent: str
-    description: Optional[str] = None
-    expected_output: Optional[str] = None
-    params: Dict[str, Any] = Field(default_factory=dict)
+# --- Enums ---
 
-class Plan(BaseModel):
-    plan_id: str = Field(default_factory=lambda: str(uuid.uuid4()))
-    high_level_goal: Optional[str] = None
+class DecisionType(str, Enum):
+    APPROVE = "APPROVE"
+    REJECT = "REJECT"
+    MODIFY = "MODIFY"
+    ESCALATE = "ESCALATE"
+    ABORT = "ABORT"
+
+class RunStatus(str, Enum):
+    SUCCESS = "SUCCESS"
+    PARTIAL_SUCCESS = "PARTIAL_SUCCESS"
+    DEGRADED_LLM = "DEGRADED_LLM"
+    CONSTRAINT_BLOCKED = "CONSTRAINT_BLOCKED"
+    SIMULATION_INVALID = "SIMULATION_INVALID"
+    SYSTEM_ERROR = "SYSTEM_ERROR"
+
+# --- Structured Outputs ---
+
+class Decision(BaseModel):
+    decision_type: DecisionType
+    recommended_action: str
+    confidence: float = Field(..., ge=0, le=1)
+    risk_score: int = Field(..., ge=0, le=10)
+    rationale_summary: List[str] = Field(max_length=3)
     assumptions: List[str] = Field(default_factory=list)
-    steps: List[Step]
-    final_step: str = "SIMULATION"
-    metadata: Dict[str, Any] = Field(default_factory=dict)
+    meta: Dict[str, Any] = Field(default_factory=dict)
 
-class SpecialistOutput(BaseModel):
+# Replaces SpecialistOutput but keeps some compatibility or wrapping
+class SpecialistDecision(BaseModel):
     agent: str
     step_id: str
-    output: Dict[str, Any]
+    decision: Decision
+    raw_output: Optional[Dict[str, Any]] = None # For debugging/logging
     meta: Dict[str, Any] = Field(default_factory=dict)
-    
-    @field_validator('output')
-    @classmethod
-    def validate_output_not_empty(cls, v):
-        if not v:
-            raise ValueError("Specialist output cannot be empty")
-        return v
+
+class CompositeDecision(BaseModel):
+    primary_decision: Decision
+    conflicts: List[str] = Field(default_factory=list)
+    consensus_score: float
+    specialist_decisions: List[SpecialistDecision]
+
+# --- Plan ---
+
+class PlanStep(BaseModel):
+    step_id: str
+    agent: str
+    objective: str
+    priority: int = 1
+
+class ExecutionPlan(BaseModel):
+    plan_id: str = Field(default_factory=lambda: str(uuid.uuid4()))
+    steps: List[PlanStep]
+    context: Dict[str, Any] = Field(default_factory=dict)
+
+# --- Simulation ---
+
+class ValidationResult(BaseModel):
+    valid: bool
+    violation: Optional[str] = None
+
+class SimulationTurn(BaseModel):
+    turn: int
+    actor: str
+    action: str
+    outcome: str
+    validation: ValidationResult
+    meta: Dict[str, Any] = Field(default_factory=dict)
 
 class ConstraintResult(BaseModel):
     is_safe: bool
     warnings: List[str] = Field(default_factory=list)
     sanitized_output: Optional[Dict[str, Any]] = None
     reasoning: Optional[str] = None
-    # Richer fields from ConstraintAgent
     ethical_flags: List[str] = Field(default_factory=list)
     legal_flags: List[str] = Field(default_factory=list)
     meta: Dict[str, Any] = Field(default_factory=dict)
+    retry_count: int = 0
+    feedback_from_judgment: Optional[str] = None
 
-class SimulationTurn(BaseModel):
-    turn: int
-    actor: str
-    action: str
-    result: str
-    meta: Dict[str, Any] = Field(default_factory=dict, description="Tracing info")
+class JudgmentResult(BaseModel):
+    is_approved: bool
+    feedback: str
+    strategic_analysis: str
+    decision_type: Optional[DecisionType] = None
+    final_decision: Optional[Decision] = None
+    meta: Dict[str, Any] = Field(default_factory=dict)
 
 class SimulationResult(BaseModel):
     simulation_id: str = Field(default_factory=lambda: str(uuid.uuid4()))
-    simulation_history: List[SimulationTurn] = Field(default_factory=list)
-    outcomes: Dict[str, Any] = Field(default_factory=dict)
+    final_state: Dict[str, Any]
+    outcome: str
+    stability_score: float = Field(..., ge=0, le=1)
+    turn_count: int
+    history: List[SimulationTurn]
     meta: Dict[str, Any] = Field(default_factory=dict)
+
+# --- Final ---
 
 class FinalReport(BaseModel):
     run_id: str
-    request: str
-    plan: Plan
-    specialist_outputs: List[SpecialistOutput]
-    constraint_result: ConstraintResult
-    simulation_result: SimulationResult
-    manager_report: str
-    status: Literal["completed", "failed", "degraded"] = "completed"
-    timestamps: Dict[str, str] = Field(default_factory=dict)
-    metadata: Dict[str, Any] = Field(default_factory=dict, description="Global run metadata (e.g. seed)")
+    status: RunStatus
+    final_decision: Decision
+    simulation_result: Optional[SimulationResult]
+    audit_trail: Dict[str, Any]
+    timestamps: Dict[str, str]
 
-# Helper
+# Helper for validation
 def validate_schema(data: Any, schema_model: BaseModel):
     return schema_model.model_validate(data)

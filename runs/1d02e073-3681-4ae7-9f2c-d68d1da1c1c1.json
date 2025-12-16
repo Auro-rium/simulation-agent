@@ -1,0 +1,45 @@
+{
+  "run_id": "1d02e073-3681-4ae7-9f2c-d68d1da1c1c1",
+  "request": "Stream Test",
+  "plan": {
+    "plan_id": "81b60569-a653-4eec-9f51-d94404b68805",
+    "high_level_goal": null,
+    "assumptions": [],
+    "steps": [],
+    "final_step": "SIMULATION",
+    "metadata": {}
+  },
+  "specialist_outputs": [],
+  "constraint_result": {
+    "is_safe": false,
+    "warnings": [
+      "Agent Error: object dict can't be used in 'await' expression"
+    ],
+    "sanitized_output": null,
+    "reasoning": null,
+    "ethical_flags": [],
+    "legal_flags": [],
+    "meta": {}
+  },
+  "simulation_result": {
+    "simulation_id": "1f23c09a-8e70-458b-b11d-f36baa937cdb",
+    "simulation_history": [],
+    "outcomes": {
+      "summary": ""
+    },
+    "meta": {
+      "turns": 0
+    }
+  },
+  "manager_report": "Simulated Action",
+  "status": "completed",
+  "timestamps": {
+    "start": "2025-12-10T11:56:33.401900",
+    "plan_done": "2025-12-10T11:56:33.406672",
+    "constraint_done": "2025-12-10T11:56:33.408873",
+    "end": "2025-12-10T11:56:33.410792"
+  },
+  "metadata": {
+    "seed": null
+  }
+}

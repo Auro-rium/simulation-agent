@@ -13,7 +13,7 @@ class BaseAgent:
         self.logger = logging.getLogger(name)
         self.llm_client = LLMClient()
 
-    def run(self, inputs: Dict[str, Any]) -> Dict[str, Any]:
+    async def run(self, inputs: Dict[str, Any]) -> Dict[str, Any]:
         """Main execution method to be implemented by subclasses."""
         raise NotImplementedError("Agents must implement the run method")
 

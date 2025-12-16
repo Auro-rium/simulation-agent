@@ -1,4 +1,4 @@
-# Diplomatic Simulation Agent 🌍 (v0.3.1 Production)
+# Diplomatic Simulation Agent 🌍 (v0.2.1 Production)
 
 > **HARDENED PRODUCTION SYSTEM**: Features Strict Typed Decisions, Deterministic Aggregation, and Enforced LLM Safety/Token Budgets.
 
@@ -50,7 +50,7 @@ Copy-paste this into the **Global Intelligence** field in the UI to see the agen
 
 ---
 
-### 🧠 Architecture (v0.4.1)
+### 🧠 Architecture (v0.2.1)
 The system employs a **Decision-Centric** architecture where agents exchange typed Pydantic objects (`Decision`, `ExecutionPlan`) rather than free text.
 
 ### Core Components
@@ -146,4 +146,4 @@ simulation-agent/
 
 ---
 
-**Built with Groq & LangGraph** | *v0.4.1 Production Build*
+**Built with Groq & LangGraph** | *v0.2.1 Production Build*

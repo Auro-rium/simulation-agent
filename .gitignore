@@ -58,3 +58,7 @@ key.json
 cache/
 runs/
 __init__.py
+
+pyproject.toml
+debug_env.py
+/scripts

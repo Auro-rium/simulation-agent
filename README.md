@@ -1,45 +1,58 @@
 # 🌍 Diplomatic Simulation Agent `v0.2.1`
 
-> **Enterprise-Grade Multi-Agent Strategic Simulation System**
+> **Enterprise-Grade Strategic Simulation Architecture**
 >
-> *Powered by Groq `gpt-oss-120b` & `gpt-oss-20b`*
+> *Designed for Adaptive Fault Tolerance & Epistemic Resilience*
 
 ![Status](https://img.shields.io/badge/Status-Production%20Hardened-success?style=for-the-badge)
 ![License](https://img.shields.io/badge/License-MIT-blue?style=for-the-badge)
-![Python](https://img.shields.io/badge/Python-3.12-yellow?style=for-the-badge)
-![Groq](https://img.shields.io/badge/LLM-Groq-orange?style=for-the-badge&logo=groq)
+![Architecture](https://img.shields.io/badge/Architecture-Decision%20Centric-orange?style=for-the-badge)
 
-An advanced agentic architecture designed to model, analyze, and simulate complex geopolitical scenarios. Unlike standard chatbots, this system employs a **Decision-Centric** architecture where agents communicate via strictly typed Pydantic objects, ensuring deterministic control flow and rigorous safety.
-
----
-
-## ⚡ What's New in v0.2.1
-
-### 🛡️ **Epistemic Resilience & Intelligence Salvage**
-The system now possesses "Cognitive Recovery" capabilities. If a specialist agent produces malformed output (e.g., broken JSON), the system doesn't crash or discard the data. Instead:
-1.  **Intercepts** the raw thought stream.
-2.  **Salvages** semantic signals using a fast extraction layer.
-3.  **Synthesizes** a valid risk signal from the noise.
-> *Result: The system thinks even when it stutters.*
-
-### 🧱 **Adaptive Fault Tolerance**
-A strict semantic firewall now separates **System Faults** (timeouts, API errors) from **Strategic Risks**.
-- **Degraded Mode**: If intelligence is partial, the system automatically shifts to a conservative "Safe Mode" (Risk 0).
-- **Consensus Abort**: A single hallucinating agent cannot trigger an ABORT. We require a quorum of high-confidence, high-risk signals.
-
-### 🧠 **Visible Thinking**
-Watch the "Inner Monologue" of every agent in real-time via the new **Thought Stream** UI.
+An advanced multi-agent system designed to model, analyze, and simulate complex geopolitical scenarios. This repository implements a **Decision-Centric** architecture where agents communicate via strictly typed Pydantic objects (`Decision`, `Signal`), ensuring deterministic control flow and rigorous safety.
 
 ---
 
-## 🏗️ Architecture
+## 🏗️ Architecture & Model Strategy
 
-The system uses a directed cyclic graph (LangGraph) to orchestrate a pipeline of specialist agents.
+This system implements a tiered model strategy to balance cost, speed, and reasoning depth.
+
+### **Production vs. Testing Strategy**
+| Environment | Provider | Model | Use Case |
+|-------------|----------|-------|----------|
+| **Testing / Dev** | **Groq** | `gpt-oss-120b` / `20b` | **Low Cost & High Speed**. Used for rapid iteration, unit testing, and high-volume simulation runs where latency and cost efficiency are paramount. |
+| **Production** | **Google Gemini** | `gemini-2.5-pro` | **High Fidelity**. Reserved for live deployment requiring maximum context window (1M+ tokens), multi-modal reasoning, and highest-grade diplomatic nuance. |
+
+> **Note**: The repository is currently configured for **Groq (Testing Mode)** by default to ensure accessible development.
+
+---
+
+## ⚡ Key Features (v0.2.0)
+
+### 1. 🛡️ Adaptive Fault Tolerance
+We enforce a **Semantic Firewall** between System Faults and Strategic Risks.
+- **Strict Separation**: API timeouts or Schema errors are never conflated with "High Risk".
+- **Degraded Mode**: If the system loses contact with specialist agents (Zero Decisions), it automatically fails over to a **neutral risk stance** (Risk 0) rather than crashing or hallucinating a crisis.
+- **Consensus Abort**: A single agent cannot trigger a mission abort. A quorum of ≥2 high-confidence, high-risk signals is required.
+
+### 2. 🧠 Epistemic Resilience (Intelligence Salvage)
+The system possesses "Cognitive Recovery" capabilities. 
+- **The Problem**: High-speed LLMs sometimes fail strict JSON schemas.
+- **The Solution**: Instead of discarding malformed output, the **Orchestrator** intercepts the proper raw text, uses a fast recovery model to **salvage** semantic signals (e.g., "Risk Increasing"), and feeds this "Soft Intelligence" into the decision engine.
+- **Result**: The system "thinks" even when it stutters.
+
+### 3. 👁️ Visible Thinking
+Every agent's cognitive process is transparent. The **Thought Stream** UI displays the instantaneous "Inner Monologue" of security, economic, and technology specialists before they commit to a formal decision.
+
+---
+
+## 🧩 System Components
+
+The architecture is orchestrated via a directed cyclic graph (**LangGraph**).
 
 ```mermaid
 graph TD
-    User(User Request) --> Plan[Planner Agent]
-    Plan -->|ExecutionPlan| Specialists
+    User(User Global Intelligence) --> Planner[Planner Agent]
+    Planner -->|ExecutionPlan| Specialists
     
     subgraph "Parallel Intelligence Layer"
         Specialists --> Sec[Security Agent]
@@ -47,9 +60,9 @@ graph TD
         Specialists --> Econ[Economics Agent]
     end
     
-    Sec -->|Decision/Signal| Aggregator
-    Tech -->|Decision/Signal| Aggregator
-    Econ -->|Decision/Signal| Aggregator
+    Sec -->|Decision / Signal| Aggregator
+    Tech -->|Decision / Signal| Aggregator
+    Econ -->|Decision / Signal| Aggregator
     
     Aggregator -->|CompositeDecision| Constraint[Constraint Gate]
     
@@ -59,82 +72,63 @@ graph TD
     Judgment -->|Approve| Sim[Simulation Engine]
     Judgment -->|Reject| Constraint
     
-    Sim -->|State Update| Report
+    Sim -->|State Update| Report[Final Report]
 ```
 
-### Core Components
-| Component | Function | Model Used |
-|-----------|----------|------------|
-| **Planner** | Decomposes abstract strategy into tactical steps | `openai/gpt-oss-120b` |
-| **Specialists** | Domain-specific analysis (Security, Tech, Econ) | `openai/gpt-oss-20b` |
-| **Aggregator** | Deterministic fusion of Decisions & Salvaged Signals | *Code-Based* |
-| **Constraint** | Asimov-style safety & ethics validation gates | `openai/gpt-oss-120b` |
-| **Judgment** | "First Principles" feasibility check | `openai/gpt-oss-120b` |
-| **Simulation** | Game-theoretic outcome projection | `openai/gpt-oss-120b` |
+### Repository Structure
+| Directory | Description |
+|-----------|-------------|
+| `agents/` | **The Brains**. Contains `SecurityAgent`, `EconomicsAgent`, etc. Each inherits from `BaseAgent` and implements strict typed interfaces. |
+| `core/` | **The Laws**. Defines Pydantic schemas (`schemas.py`) and the `DecisionAggregator` logic. This is the deterministic kernel of the system. |
+| `orchestration/` | **The Nervous System**. `graph.py` defines the LangGraph workflow, nodes, and state transitions. `manager_run.py` handles the async loop. |
+| `llm/` | **The Mouth**. `llm_client.py` handles API communication, retries, and the **JSON Markdown Stripper** for resilience. |
+| `ui/` | **The Face**. A reactive Streamlit dashboard (`app.py`) with specialized components (`components.py`) for rendering decisions, timelines, and thought streams. |
 
 ---
 
-## 🚀 Quick Start
+## 🚀 Getting Started
 
 ### Prerequisites
 - Python 3.12+
-- Docker (Optional)
-- **Groq API Key** (Required)
+- Groq API Key (for Development/Testing)
 
-### 1. Installation
-```bash
-git clone https://github.com/your-org/simulation-agent.git
-cd simulation-agent
-python3 -m venv .venv
-source .venv/bin/activate
-pip install -r requirements.txt
-```
+### Installation
 
-### 2. Configuration
-Create a `.env` file:
-```env
-GROQ_API_KEY=gsk_your_key_here
-```
+1.  **Clone & Setup**
+    ```bash
+    git clone https://github.com/your-org/simulation-agent.git
+    cd simulation-agent
+    python3 -m venv .venv
+    source .venv/bin/activate
+    pip install -r requirements.txt
+    ```
 
-### 3. Run the Dashboard
-```bash
-streamlit run ui/app.py
-```
-*Access the UI at `http://localhost:8501`*
+2.  **Environment**
+    Create a `.env` file:
+    ```env
+    GROQ_API_KEY=gsk_...
+    ```
+
+3.  **Run the Dashboard**
+    ```bash
+    streamlit run ui/app.py
+    ```
 
 ---
 
-## 🧪 Testing & Verification
+## 🧪 Testing
 
-The repository includes a hardened test suite to verify the fault tolerance mechanisms.
+The system includes a production-hardened test suite.
 
 ```bash
-# Run full regression suite
+# Run all tests
 pytest tests/
 
-# Test specific agent resilience
-pytest tests/test_resilience.py
-```
-
----
-
-## 📂 Project Structure
-
-```text
-simulation-agent/
-├── agents/             # Specialist Agents (The "Brain")
-├── core/               # Pydantic Schemas & Aggregation Logic
-├── llm/                # Hardened LLM Client (w/ Markdown Stripper)
-├── orchestration/      # LangGraph Workflow Definition
-├── ui/                 # Streamlit Interface (w/ Event Loop)
-└── tests/              # Resilience Tests
+# Test LLM Client Resilience (Retries, JSON Stripping)
+pytest tests/test_llm_client.py
 ```
 
 ---
 
 ### 📜 License
-MIT License. See `LICENSE` for details.
-
----
-
-**Built with Groq Speed.**
+MIT License.

@@ -26,8 +26,16 @@ class SimulationAgent(BaseAgent):
              # It might be passed as dict
              decision = Decision(**final_decision_dict)
         except Exception:
-             # Fallback or error
-             return {"error": "Invalid Decision Object"}
+             # "Never block on missing intelligence"
+             # Construct conservative default
+             from core.schemas import DecisionType
+             decision = Decision(
+                 decision_type=DecisionType.MODIFY,
+                 recommended_action="Maintain Status Quo (System Degraded)",
+                 confidence=0.1,
+                 risk_score=0,
+                 rationale_summary=["Input decision invalid; using baseline"]
+             )
 
         prompt = f"""
         {SIMULATION_SYSTEM_PROMPT}
@@ -39,7 +47,7 @@ class SimulationAgent(BaseAgent):
         result = self.llm_client.generate_structured_output(
             prompt,
             response_schema=SimulationResult.model_json_schema(),
-            model="llama-3.3-70b-versatile"
+            model="openai/gpt-oss-120b"
         )
         
         # result is a dict, so we handle it as such

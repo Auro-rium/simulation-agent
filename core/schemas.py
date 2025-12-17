@@ -12,6 +12,11 @@ class DecisionType(str, Enum):
     ESCALATE = "ESCALATE"
     ABORT = "ABORT"
 
+class ExecutionPhase(str, Enum):
+    INIT = "INIT"
+    RUNNING = "RUNNING"
+    FINALIZING = "FINALIZING"
+
 class RunStatus(str, Enum):
     SUCCESS = "SUCCESS"
     PARTIAL_SUCCESS = "PARTIAL_SUCCESS"
@@ -31,11 +36,33 @@ class Decision(BaseModel):
     assumptions: List[str] = Field(default_factory=list)
     meta: Dict[str, Any] = Field(default_factory=dict)
 
+# Agent-Specific Schemas (Inherit from Decision for consistency)
+class SecurityAssessment(Decision):
+    pass
+
+class EconAssessment(Decision):
+    pass
+
 # Replaces SpecialistOutput but keeps some compatibility or wrapping
-class SpecialistDecision(BaseModel):
+class AgentFault(BaseModel):
+    fault_type: Literal["SCHEMA_ERROR", "TIMEOUT", "RATE_LIMIT", "SYSTEM_ERROR"]
     agent: str
     step_id: str
-    decision: Decision
+    message: str
+
+class IntelligenceSignal(BaseModel):
+    """Fallback for schema-invalid but semantically useful output."""
+    source_agent: str
+    summary_points: List[str] = Field(..., max_length=3)
+    confidence: float
+    inferred_risk_delta: int = Field(..., ge=-2, le=2)
+
+class SpecialistDecision(BaseModel):
+    agent: str
+    decision: Optional[Decision] = None
+    fault: Optional[AgentFault] = None
+    signal: Optional[IntelligenceSignal] = None
+    thought_trace: Optional[str] = None # For UI "Thinking" display
     raw_output: Optional[Dict[str, Any]] = None # For debugging/logging
     meta: Dict[str, Any] = Field(default_factory=dict)
 

@@ -58,7 +58,8 @@ async def manager_run(
         "turn_count": 0,
         "specialist_decisions": [],
         "simulation_state": context.get("initial_state", {}),
-        "status": "RUNNING", # Temporary, will be typed enum in graph
+        "execution_phase": "INIT", # ExecutionPhase.INIT
+        "final_status": None,
         "retry_count": 0,
         "judgment_feedback": None,
         "plan": None,
@@ -75,9 +76,12 @@ async def manager_run(
         for node_name, state_update in output.items():
             
             if node_name == "plan":
-                plan = state_update.get("plan")
-                emit("status", text="Execution Plan created.")
-                emit("plan", payload=plan)
+                if state_update:
+                    plan = state_update.get("plan")
+                    emit("status", text="Execution Plan created.")
+                    emit("plan", payload=plan)
+                else:
+                    emit("status", text="Planning failed - system error")
                 
             elif node_name == "specialists":
                 specs = state_update.get("specialist_decisions", [])
@@ -96,10 +100,13 @@ async def manager_run(
                 emit("constraint", payload=res)
                 
             elif node_name == "judgment":
-                 res = state_update.get("judgment_result")
-                 status_text = "Judgment: APPROVED" if res.is_approved else "Judgment: REJECTED (Looping)"
-                 emit("status", text=status_text)
-                 emit("judgment", payload=res)
+                 res = state_update.get("judgment_result") if state_update else None
+                 if res:
+                     status_text = "Judgment: APPROVED" if res.is_approved else "Judgment: REJECTED (Looping)"
+                     emit("status", text=status_text)
+                     emit("judgment", payload=res)
+                 else:
+                     emit("status", text="Judgment: SYSTEM ERROR (Rate Limit?)")
                  
             elif node_name == "simulation_run":
                 res = state_update.get("simulation_result")

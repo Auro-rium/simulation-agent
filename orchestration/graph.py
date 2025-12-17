@@ -8,12 +8,12 @@ from datetime import datetime
 
 from langgraph.graph import StateGraph, END
 from core.schemas import (
-    ExecutionPlan, SpecialistDecision, ConstraintResult, 
+    ExecutionPlan, SpecialistDecision, ConstraintResult,
     JudgmentResult, SimulationResult, FinalReport, RunStatus,
-    CompositeDecision, Decision, DecisionType
+    CompositeDecision, Decision, DecisionType, IntelligenceSignal, AgentFault
 )
 from core.decision_aggregator import DecisionAggregator
-from llm.llm_client import LLMClient
+from llm.llm_client import LLMClient, JSONGenerationError
 
 # Import Agents
 from agents.planner_agent import PlannerAgent
@@ -50,7 +50,9 @@ class CoordinatorState(TypedDict):
     
     # Final Output
     final_report: Optional[FinalReport]
-    status: RunStatus
+    # Execution State
+    execution_phase: str # ExecutionPhase Enum
+    final_status: Optional[RunStatus]
     timestamps: Dict[str, str]
 
 async def node_plan(state: CoordinatorState) -> Dict:
@@ -80,46 +82,110 @@ async def node_specialists(state: CoordinatorState) -> Dict:
     if not plan or not plan.steps:
         return {"specialist_decisions": []}
         
-    async def run_step(step) -> SpecialistDecision:
-        agent_name = step.agent.upper()
-        if "SECURITY" in agent_name: agent = SecurityAgent()
-        elif "TECHNOLOGY" in agent_name: agent = TechnologyAgent()
-        elif "ECONOMICS" in agent_name: agent = EconomicsAgent()
+    # Helpers for Intelligence Salvage
+    async def _generate_thought_trace(decision: Decision, agent_name: str) -> str:
+        """Generates a short 'thinking' monologue for the UI."""
+        prompt = f"Summarize this decision by {agent_name} as a first-person inner monologue (1 sentence): {decision.recommended_action}"
+        try:
+             client = LLMClient()
+             # Use Fast model for UI fluff
+             res = await client.generate(prompt, model="openai/gpt-oss-20b", max_tokens=60)
+             return res["text"].strip()
+        except:
+             return "Processing intelligence..."
+
+    async def _salvage_intelligence(raw_text: str, agent_name: str) -> Optional[IntelligenceSignal]:
+        """Attempts to extract partial signals from broken JSON output."""
+        prompt = f"""
+        You are a recovery system. The following output from {agent_name} failed schema validation.
+        Extract any useful STRATEGIC SIGNALS.
+        
+        RAW OUTPUT:
+        {raw_text[:2000]}
+        
+        Return JSON matching IntelligenceSignal:
+        - summary_points (max 3)
+        - inferred_risk_delta (-2 to +2)
+        - confidence (0.1 to 0.4)
+        """
+        try:
+            client = LLMClient()
+            res = await client.generate_structured_output(
+                prompt,
+                response_schema=IntelligenceSignal.model_json_schema(),
+                model="openai/gpt-oss-20b",
+                max_tokens=300
+            )
+            res["source_agent"] = agent_name # Ensure field
+            return IntelligenceSignal(**res)
+        except Exception as e:
+            print(f"Salvage failed: {e}")
+            return None
+
+    # Step Runner
+    async def run_step(step):
+        agent_name = step.agent.lower()
+        agent = None
+        if "security" in agent_name: agent = SecurityAgent()
+        elif "technology" in agent_name: agent = TechnologyAgent()
+        elif "economics" in agent_name: agent = EconomicsAgent()
         else: agent = None
         
         if agent:
              payload = {"instruction": step.objective, "context": ctx}
              try:
                  res = await agent.run(payload)
-                 # Expecting {"decision": dict}
                  decision_data = res.get("decision", {})
                  decision = Decision(**decision_data)
-                 # raw = res for audit
-             except Exception as e:
-                 # Fallback empty decision on error? Or re-raise?
-                 # System mandate: Failure is first class.
-                 # We return a dummy ERROR decision
-                 decision = Decision(
-                     decision_type=DecisionType.ABORT,
-                     recommended_action="Agent Error",
-                     confidence=0,
-                     risk_score=10,
-                     rationale_summary=[str(e)]
+                 
+                 # Success! Generate thought trace
+                 trace = await _generate_thought_trace(decision, agent_name)
+                 
+                 return SpecialistDecision(
+                    agent=agent_name,
+                    step_id=step.step_id,
+                    decision=decision,
+                    thought_trace=trace
                  )
+             except JSONGenerationError as je:
+                 # "Extract key assertions... Wrap as IntelligenceSignal"
+                 print(f"Schema Error for {agent_name}. Attempting Salvage...")
+                 signal = await _salvage_intelligence(je.raw_text, agent_name)
+                 
+                 if signal:
+                     return SpecialistDecision(
+                         agent=agent_name,
+                         step_id=step.step_id,
+                         signal=signal,
+                         thought_trace="[Signal Intercepted] Unstructured intelligence recovered from noise."
+                     )
+                 else:
+                     # Salvage failed, fallback to Fault
+                     fault = AgentFault(
+                         fault_type="SCHEMA_ERROR",
+                         agent=agent_name,
+                         step_id=step.step_id,
+                         message=f"Schema failed and Salvage failed: {str(je)[:100]}"
+                     )
+                     return SpecialistDecision(agent=agent_name, step_id=step.step_id, fault=fault)
+                     
+             except Exception as e:
+                 # Standard System Fault
+                 fault = AgentFault(
+                     fault_type="SYSTEM_ERROR",
+                     agent=agent_name,
+                     step_id=step.step_id,
+                     message=str(e)[:300]
+                 )
+                 return SpecialistDecision(agent=agent_name, step_id=step.step_id, fault=fault)
         else:
-             decision = Decision(
-                     decision_type=DecisionType.ABORT,
-                     recommended_action="Unknown Agent",
-                     confidence=0,
-                     risk_score=10,
-                     rationale_summary=["Configuration Error"]
+             fault = AgentFault(
+                 fault_type="SYSTEM_ERROR",
+                 agent=agent_name,
+                 step_id=step.step_id,
+                 message="Agent Configuration Error: Unknown Agent"
              )
-             
-        return SpecialistDecision(
-            agent=agent_name,
-            step_id=step.step_id,
-            decision=decision
-        )
+             return SpecialistDecision(agent=agent_name, step_id=step.step_id, fault=fault)
     
     tasks = [run_step(s) for s in plan.steps]
     results = await asyncio.gather(*tasks)
@@ -141,14 +207,23 @@ async def node_constraint(state: CoordinatorState) -> Dict:
     
     try:
         constraint_agent = ConstraintAgent()
-        # Pass model_dump() usually
-        payload = {
-            "composite_decision": comp.model_dump(),
-            "judgment_feedback": feedback
-        }
-        res = await constraint_agent.run(payload)
-        c_data = res.get("constraint_check", {})
-        result = ConstraintResult(**c_data)
+        # "DEGRADED_LLM automatically PASSES"
+        # We use Risk 0 as the marker for "System Neutral / Degraded"
+        prim = comp.primary_decision
+        if prim.risk_score == 0:
+             result = ConstraintResult(
+                 is_safe=True, 
+                 warnings=["Validation Skipped: System Degraded / Low Risk"], 
+                 ethical_flags=[], legal_flags=[])
+        else:
+             # Pass model_dump() usually
+             payload = {
+                 "composite_decision": comp.model_dump(),
+                 "judgment_feedback": feedback
+             }
+             res = await constraint_agent.run(payload)
+             c_data = res.get("constraint_check", {})
+             result = ConstraintResult(**c_data)
         
     except Exception as e:
         print(f"Constraint Error: {e}")
@@ -270,13 +345,29 @@ async def node_finalize(state: CoordinatorState) -> Dict:
         final_dec = Decision(
             decision_type=DecisionType.ABORT, 
             recommended_action="System Failure", 
-            confidence=0, 
-            risk_score=10, 
+            confidence=0.0,
+            risk_score=10, # Max risk for system failure
             rationale_summary=["Graph did not reach a decision"]
         )
-        status = state.get("status", RunStatus.SYSTEM_ERROR)
-    else:
-        status = state.get("status", RunStatus.SUCCESS)
+    # Defensive Status Resolution
+    final_status = state.get("final_status")
+    
+    # If we reached here without a final status (e.g. unexpected flow)
+    if final_status is None:
+        if not final_dec:
+             final_status = RunStatus.SYSTEM_ERROR
+        elif final_dec.risk_score == 0:
+             # This is our marker for Degraded/SafeMode
+             final_status = RunStatus.DEGRADED_LLM
+        elif final_dec.decision_type == DecisionType.ABORT:
+            if final_dec.risk_score == 0:
+                final_status = RunStatus.DEGRADED_LLM
+            else:
+                final_status = RunStatus.SYSTEM_ERROR
+        else:
+            final_status = RunStatus.SUCCESS
+
+    status = final_status
 
     report = FinalReport(
         run_id=state["run_id"],
@@ -314,12 +405,19 @@ def build_graph():
         if state.get("status") == RunStatus.SYSTEM_ERROR:
             return "finalize"
             
+        # "Judgment never loops on DEGRADED_LLM"
         result = state["judgment_result"]
-        # If approved
+        
+        # If we approved (or are degraded/neutral), proceed
         if result.is_approved:
             return "simulation_run"
+            
+        prim = state["composite_decision"].primary_decision
+        if prim.risk_score == 0:
+             # Degraded state implicitly approves to avoid blocking
+             return "simulation_run"
         
-        if state["retry_count"] <= 2:
+        if state["retry_count"] <= 1:
             return "constraint"
             
         # Abort if retries exhausted

@@ -39,8 +39,8 @@ async def test_groq_mapping(client, mock_groq):
 
     # Test Pro mapping (Now Identity or Default)
     # The client no longer maps 'gemini', so we test the new constants directly
-    assert await run_gen(LLMClient.MODEL_REASONING) == "llama-3.3-70b-versatile"
-    assert await run_gen(LLMClient.MODEL_FAST) == "llama-3.1-8b-instant"
+    assert await run_gen(LLMClient.MODEL_REASONING) == "openai/gpt-oss-120b"
+    assert await run_gen(LLMClient.MODEL_FAST) == "openai/gpt-oss-20b"
 
 @pytest.mark.asyncio
 async def test_structured_output_json_mode(client, mock_groq):

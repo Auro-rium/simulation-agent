@@ -13,8 +13,8 @@ load_dotenv()
 logger = logging.getLogger("llm_client")
 
 # --- Groq Constants ---
-MODEL_REASONING = "llama-3.3-70b-versatile" # High Intelligence
-MODEL_FAST = "llama-3.1-8b-instant"         # High Speed
+MODEL_REASONING = "openai/gpt-oss-120b"  # High Intelligence
+MODEL_FAST = "openai/gpt-oss-20b"        # High Speed
 
 # Strict Token Budgets
 FLASH_MAX_OUTPUT = 1024
@@ -22,7 +22,7 @@ PRO_MAX_OUTPUT = 4096
 
 class LLMClient:
     """
-    Groq-Based Production LLM Client (v0.4.1).
+    Groq-Based Production LLM Client (v0.2.1).
     Removed all Gemini legacy code.
     """
     MODEL_REASONING = MODEL_REASONING
@@ -201,20 +201,46 @@ class LLMClient:
         try:
              response = await self.client.chat.completions.create(
                  model=model,
-                 messages=[
-                     {"role": "system", "content": f"You are a structured data assistant. Output JSON matching: {json.dumps(response_schema)}"},
-                     {"role": "user", "content": prompt}
+             messages=[
+                     {"role": "system", "content": "You MUST respond with ONLY valid JSON. No markdown, no explanation, no code blocks. Output a single JSON object that strictly matches the provided schema."},
+                     {"role": "user", "content": f"Generate JSON matching this schema:\n{json.dumps(response_schema)}\n\nTask: {prompt}"}
                  ],
                  temperature=0.1,
-                 response_format={"type": "json_object"},
-                 stream=False
+                 # "json_object" is flaky on GPT OSS via Groq API (400 errors)
+                 # We disable it for these models and rely on prompt engineering + retry
+                 response_format=None if "gpt-oss" in model else {"type": "json_object"},
+                 stream=False,
+                 max_completion_tokens=kwargs.get("max_tokens", 4096)
              )
              text_response = response.choices[0].message.content
-             return json.loads(text_response)
              
+             # Robust cleaning helper
+             def clean_json_markdown(text):
+                 if "```json" in text:
+                     text = text.split("```json")[1]
+                     if "```" in text:
+                         text = text.split("```")[0]
+                 elif "```" in text:
+                     text = text.split("```")[1].split("```")[0]
+                 return text.strip()
+
+             try:
+                 clean_text = clean_json_markdown(text_response)
+                 return json.loads(clean_text)
+             except json.JSONDecodeError as e:
+                 logger.error(f"JSON Decode Error. Raw: {text_response[:500]}... Cleaned: {clean_text[:500]}...")
+                 raise JSONGenerationError("JSON Parse Failed", raw_text=text_response)
+             
+        except JSONGenerationError:
+            raise
         except Exception as e:
              logger.error(f"Groq JSON Error: {e}")
              raise ValueError(f"Failed to generate JSON: {e}")
+
+class JSONGenerationError(Exception):
+    def __init__(self, message, raw_text):
+        super().__init__(message)
+        self.raw_text = raw_text
 
     # Compatibility
     def generate_text(self, prompt: str, model_type: str = "reasoning", temperature: float = 0.7) -> str:

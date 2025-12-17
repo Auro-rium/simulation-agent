@@ -30,7 +30,8 @@ class JudgmentAgent(BaseAgent):
         result = await self.llm_client.generate_structured_output(
             prompt,
             response_schema=JudgmentResult.model_json_schema(),
-            model="llama-3.3-70b-versatile"
+            model="openai/gpt-oss-120b",
+            max_tokens=200 # Strict cap
         )
         
         return {"judgment_result": result}
@@ -57,4 +58,5 @@ LOGIC
 - If Constraint.is_safe == False -> REJECT (Loop back) or ABORT.
 - If Safe but Risk High -> MODIFY or ESCALATE.
 - If Safe and Effective -> APPROVE.
+- SYSTEM/SCHEMA FAILURES -> Do NOT escalate risk. treat as recoverable DEGRADED_LLM.
 """

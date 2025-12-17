@@ -24,7 +24,8 @@ class PlannerAgent(BaseAgent):
             result = await self.llm_client.generate_structured_output(
                 prompt,
                 response_schema=ExecutionPlan.model_json_schema(),
-                model="llama-3.3-70b-versatile"
+                model="openai/gpt-oss-120b",
+                max_tokens=300 # Strict cap
             )
             return {"plan": result}
         except Exception as e:

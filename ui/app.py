@@ -5,184 +5,268 @@ import json
 import pandas as pd
 import sys
 import os
+from datetime import datetime
+from dotenv import load_dotenv
 
-# Ensure project root is in sys.path
-sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
+# Explicitly load .env from project root
+project_root = os.path.abspath(os.path.join(os.path.dirname(__file__), '..'))
+env_path = os.path.join(project_root, '.env')
+load_dotenv(env_path)
+sys.path.append(project_root)
 
 from ui._worker import Worker
-from ui._render import render_terminal_line, render_agent_card, render_timeline
-from ui._schema import PartialEvent
+from ui import components
 
-st.set_page_config(page_title="Diplomatic War Room", layout="wide", page_icon="🌍")
+# Page Config
+st.set_page_config(
+    page_title="Strategic Operations Console",
+    page_icon="🦅",
+    layout="wide",
+    initial_sidebar_state="expanded"
+)
 
-# Custom CSS for "War Room" aesthetic
+# Dark Mode / Cyberpunk Styling
 st.markdown("""
 <style>
-    .stApp { background-color: #0e1117; color: #e0e0e0; }
-    h1, h2, h3 { color: #d29922; border-bottom: 2px solid #d29922; padding-bottom: 5px; }
-    .stButton>button { border: 1px solid #d29922; color: #d29922; background-color: transparent; }
-    .stButton>button:hover { background-color: #d29922; color: black; }
-    .terminal-box { 
-        background-color: #000; color: #0f0; 
-        font-family: 'Fira Code', 'Courier New', monospace; 
-        padding: 10px; border-radius: 5px; 
-        height: 400px; overflow-y: auto; border: 1px solid #333;
-    }
+    .stApp { background-color: #0e1117; }
+    div.block-container { padding-top: 2rem; }
+    h1, h2, h3 { font-family: 'Inter', sans-serif; letter-spacing: -0.5px; }
+    .stButton>button { width: 100%; border-radius: 4px; font-weight: bold; }
+    .stProgress > div > div > div > div { background-color: #4caf50; }
 </style>
 """, unsafe_allow_html=True)
 
-st.title("DIPLOMATIC STRATEGIC SIMULATION TERMINAL // CLASSIFIED")
+# --- State Init ---
+if "queue" not in st.session_state: st.session_state["queue"] = queue.Queue()
+if "timeline" not in st.session_state: st.session_state["timeline"] = []
+if "worker" not in st.session_state: st.session_state["worker"] = None
+if "run_state" not in st.session_state: st.session_state["run_state"] = {} # Holds the full graph state
+if "control" not in st.session_state: st.session_state["control"] = {"stop": False}
 
-# Session State Initialization
-if "queue" not in st.session_state:
-    st.session_state["queue"] = queue.Queue()
-if "terminal_logs" not in st.session_state:
-    st.session_state["terminal_logs"] = []
-if "control" not in st.session_state:
-    st.session_state["control"] = {"paused": False, "stop": False}
-if "simulation_data" not in st.session_state:
-    st.session_state["simulation_data"] = {}
-if "timeline_data" not in st.session_state:
-    st.session_state["timeline_data"] = []
-if "worker" not in st.session_state:
-    st.session_state["worker"] = None
-if "final_result" not in st.session_state:
-    st.session_state["final_result"] = None
-
-# Sidebar: Mission Control
+# --- Sidebar: Mission Configuration ---
 with st.sidebar:
-    st.header("Mission Control")
-    st.markdown("---")
+    st.header("⚙️ Mission Config")
     
-    # Inputs
-    # Scenario Presets
-    CMD_PRESETS = {
-        "Custom": {
-            "A": "Union of Pacific States", "B": "Eurasian Hegemony", "C": "Non-Aligned Alliance",
-            "ctx": "Global energy crisis. High inflation. Rising geopolitical tensions."
+    # Presets
+    PRESETS = {
+        "Custom Scneario": {
+            "ctx": "Global energy crisis. High inflation. Rising geopolitical tensions.",
+            "A": "Union of Pacific States", "B": "Eurasian Hegemony", "C": "Non-Aligned Alliance"
         },
-        "US vs China vs India (Tech War)": {
-            "A": "United States", "B": "China", "C": "India",
-            "ctx": "2028: AI Semiconductor Embargo Escalation. US tightens export controls. China retaliates with rare earth ban. India positions as neutral manufacturing hub but faces border pressure."
+        "Tech War (2028)": {
+            "ctx": "2028: AI Semiconductor Embargo Escalation. US tightens export controls. China retaliates with rare earth ban.",
+            "A": "United States", "B": "China", "C": "India"
         },
-        "Arctic Melt Standoff (2032)": {
-            "A": "Nordic Alliance", "B": "Eurasian Energy Bloc", "C": "Trans-Atlantic Union",
-            "ctx": "Arctic sea ice collapse opens Northern Sea Route. Dispute over drilling rights and military passage. Drone shot down near oil rig."
+        "Arctic Melt (2032)": {
+            "ctx": "Arctic sea ice collapse opens Northern Sea Route. Dispute over drilling rights. Drone shot down.",
+            "A": "Nordic Alliance", "B": "Eurasian Energy Bloc", "C": "Trans-Atlantic Union"
         }
     }
     
-    selected_preset = st.selectbox("Load Scenario", list(CMD_PRESETS.keys()))
-    preset_data = CMD_PRESETS[selected_preset]
+    preset = st.selectbox("Load Scenario", list(PRESETS.keys()), index=1)
+    p_data = PRESETS[preset]
     
-    # Inputs (Populated by Preset)
-    actor_a = st.text_input("Actor A (Focal)", preset_data["A"])
-    actor_b = st.text_input("Actor B (Rival)", preset_data["B"])
-    actor_c = st.text_input("Actor C (Neutral)", preset_data["C"])
-    global_context = st.text_area("Global Intelligence", preset_data["ctx"])
+    st.subheader("Parameters")
+    actor_a = st.text_input("Focal Actor (A)", value=p_data["A"])
+    actor_b = st.text_input("Adversary (B)", value=p_data["B"])
+    actor_c = st.text_input("Third Party (C)", value=p_data["C"])
     
-    st.markdown("---")
+    risk_tolerance = st.slider("Max Risk Tolerance", 0, 10, 8, help="Risk scores above this trigger ABORT")
+    model_mode = st.radio("Inference Engine", ["Reasoned (70B)", "Fast (8B)", "Hybrid"], index=0)
     
-    # Run Button
-    if st.button("COMMENCE SIMULATION", type="primary"):
-        # Reset State
-        st.session_state["terminal_logs"] = []
-        st.session_state["timeline_data"] = []
-        st.session_state["final_result"] = None
-        st.session_state["simulation_data"] = {}
-        st.session_state["control"] = {"paused": False, "stop": False}
+    st.divider()
+    
+    if st.button("🚀 INITIATE SEQUENCE", type="primary"):
+        # Reset
+        st.session_state["timeline"] = []
+        st.session_state["run_state"] = {}
+        st.session_state["control"]["stop"] = False
         
-        # Build Request
+        # Context Construction
         context = {
             "actors": {"A": actor_a, "B": actor_b, "C": actor_c},
+            "risk_tolerance": risk_tolerance,
+            "max_turns": 5,
             "strategies": {},
-            "max_turns": 5
+            "model_mode": model_mode
         }
-        request_text = f"Analyze stability given: {global_context}"
         
         # Start Worker
         q = queue.Queue()
         st.session_state["queue"] = q
+        request_text = f"Analyze stability given: {p_data['ctx']}"
+        
         worker = Worker(q, request_text, context, st.session_state["control"])
         worker.start()
         st.session_state["worker"] = worker
         st.rerun()
 
-    # Controls during run
-    if st.session_state["worker"] and st.session_state["worker"].is_alive():
-        col1, col2 = st.columns(2)
-        if col1.button("PAUSE" if not st.session_state["control"]["paused"] else "RESUME"):
-            st.session_state["control"]["paused"] = not st.session_state["control"]["paused"]
-            st.rerun()
-        if col2.button("ABORT"):
+    if st.session_state.get("worker"):
+        if st.button("🛑 EMERGENCY STOP", type="secondary"):
             st.session_state["control"]["stop"] = True
             st.session_state["worker"] = None
+            st.warning("Sequence Aborted.")
             st.rerun()
 
-# Main Layout
-col_main, col_right = st.columns([2, 1])
+# --- Main Dashboard ---
+st.title("🦅 Strategic Operations Console")
 
-# Event Loop Processing
-if st.session_state["worker"] and st.session_state["worker"].is_alive():
-    try:
-        # Poll queue
-        msg = st.session_state["queue"].get_nowait()
+col_left, col_mid, col_right = st.columns([1.5, 2, 1.5])
+
+# LEFT: Timeline & Plan
+with col_left:
+    st.subheader("📡 Live Feed")
+    components.render_timeline(st.session_state["timeline"])
+    
+    # Show Plan if available
+    run_state = st.session_state["run_state"]
+    if "plan" in run_state and run_state["plan"]:
+        with st.expander("Execution Plan", expanded=True):
+            for step in run_state["plan"].get("steps", []):
+                st.markdown(f"**[{step.get('agent','SYS').upper()}]** {step.get('objective')}")
+
+
+# MIDDLE: Decision Desk
+with col_mid:
+    st.subheader("🎯 Command Decision")
+    
+    run_state = st.session_state["run_state"]
+    
+    # Priority: Final Decision > Judgment > Constraint > none
+    display_decision = None
+    
+    if run_state.get("final_report"):
+        display_decision = run_state["final_report"].get("final_decision")
+        status = run_state["final_report"].get("status")
         
-        if msg["type"] == "progress":
-            st.session_state["progress"] = msg["value"]
-            st.toast(msg["text"], icon="ℹ️")
+        if status == "DEGRADED_LLM":
+            st.warning("⚠️ Partial intelligence — system operating under degraded capacity")
             
-        elif msg["type"] == "turn":
-            st.session_state["terminal_logs"].append(msg["payload"])
-            
-        elif msg["type"] == "card_update":
-            st.session_state["simulation_data"][msg["agent"]] = msg["content"]
-            
-        elif msg["type"] == "timeline_update":
-            st.session_state["timeline_data"].append(msg["turn"])
-            
-        elif msg["type"] == "done":
-            st.session_state["final_result"] = msg["payload"]
-            st.session_state["worker"] = None # Stop polling
-            st.success("Mission Complete")
-            
-        elif msg["type"] == "error":
-            st.error(f"Critical Failure: {msg['payload']}")
-            with st.expander("Traceback"):
-                st.code(msg["trace"])
-            st.session_state["worker"] = None
-
-        st.rerun() # Immediate rerun to process next event quickly
-            
-    except queue.Empty:
-        time.sleep(0.1) # Wait a bit then rerun to check queue again
-        st.rerun()
-
-# Render UI
-with col_main:
-    st.subheader("Tactical Terminal")
+    elif run_state.get("judgment_result"):
+        # Show intermediate judgment
+        pass 
+        
+    components.render_decision_card(display_decision)
     
-    # Terminal Output
-    terminal_html = "".join([render_terminal_line(line) for line in st.session_state["terminal_logs"]])
-    st.markdown(f'<div class="terminal-box">{terminal_html}</div>', unsafe_allow_html=True)
-    
-    # Timeline
-    st.subheader("Strategic Timeline")
-    render_timeline(st.session_state["timeline_data"])
-    
-    if st.session_state["final_result"]:
-        st.subheader("Executive Summary")
-        st.info(st.session_state["final_result"].get("manager_report", "No report generated."))
+    st.divider()
+    components.render_specialist_breakdown(run_state.get("specialist_decisions", []))
 
+# RIGHT: Simulation & Audit
 with col_right:
-    st.subheader("Agent Network")
-    
-    # Render Agents Cards
-    security_data = st.session_state["simulation_data"].get("security", "Standby...")
-    render_agent_card("SECURITY", "Active", security_data[:200] + "...", "red")
-    
-    tech_data = st.session_state["simulation_data"].get("technology", "Standby...")
-    render_agent_card("TECHNOLOGY", "Active", tech_data[:200] + "...", "blue")
-    
-    econ_data = st.session_state["simulation_data"].get("economics", "Standby...")
-    render_agent_card("ECONOMICS", "Active", econ_data[:200] + "...", "green")
+    # Thought Stream (New)
+    components.render_thought_stream(run_state.get("specialist_decisions", []))
+    st.divider()
 
+    st.subheader("🎲 Simulation")
+    
+    sim_res = run_state.get("simulation_result")
+    if sim_res:
+        valid = sim_res.get("outcome") != "CRASH"
+        st.metric("Model Stability", f"{sim_res.get('stability_score', 0):.2f}")
+        st.metric("Turns Simluated", sim_res.get("turn_count", 0))
+        
+        if not valid:
+             st.error(f"Simulation Failed: {sim_res.get('outcome')}")
+        else:
+             st.success("Simulation Validated")
+             
+    else:
+        st.caption("Awaiting Strategy Approval...")
+        
+    st.divider()
+    components.render_audit_panel(st.session_state["run_state"])
+
+# --- Event Loop ---
+if st.session_state.get("worker"):
+    try:
+        # Drain queue roughly
+        while True:
+            msg = st.session_state["queue"].get_nowait()
+            
+            # Timestamp
+            ts = datetime.now().isoformat()
+            
+            if msg["type"] == "status":
+                st.session_state["timeline"].insert(0, {
+                    "timestamp": ts, 
+                    "source": "SYS", 
+                    "text": msg["payload"], 
+                    "status": "running"
+                })
+                
+            elif msg["type"] == "plan":
+                st.session_state["run_state"]["plan"] = msg["payload"]
+                st.session_state["timeline"].insert(0, {
+                    "timestamp": ts, 
+                    "source": "PLANNER", 
+                    "text": "Execution Plan Optimized", 
+                    "status": "success"
+                })
+                
+            elif msg["type"] == "specialist_decision":
+                # Aggregate into list
+                if "specialist_decisions" not in st.session_state["run_state"]:
+                    st.session_state["run_state"]["specialist_decisions"] = []
+                st.session_state["run_state"]["specialist_decisions"].append(msg["payload"])
+                
+                agent = msg.get("agent", "AGENT")
+                st.session_state["timeline"].insert(0, {
+                    "timestamp": ts, 
+                    "source": agent.upper(), 
+                    "text": "Intelligence Received", 
+                    "status": "success"
+                })
+                
+            elif msg["type"] == "composite":
+                st.session_state["run_state"]["composite_decision"] = msg["payload"]
+                
+            elif msg["type"] == "constraint":
+                res = msg["payload"]
+                safe = res.get("is_safe")
+                st.session_state["timeline"].insert(0, {
+                    "timestamp": ts, 
+                    "source": "CONSTRAINT", 
+                    "text": "Safety Check Passed" if safe else f"Safety Blocked: {res.get('warnings')}", 
+                    "status": "success" if safe else "error"
+                })
+                
+            elif msg["type"] == "judgment":
+                 # Typically judgment is final approval
+                 res = msg["payload"]
+                 approved = res.get("is_approved")
+                 st.session_state["run_state"]["judgment_result"] = res
+                 st.session_state["timeline"].insert(0, {
+                    "timestamp": ts, 
+                    "source": "JUDGMENT", 
+                    "text": "Strategy Approved" if approved else "Strategy Rejected (Looping)", 
+                    "status": "success" if approved else "warning"
+                })
+
+            elif msg["type"] == "simulation":
+                st.session_state["run_state"]["simulation_result"] = msg["payload"]
+                st.session_state["timeline"].insert(0, {
+                    "timestamp": ts, 
+                    "source": "SIMULATION", 
+                    "text": "Wargame Complete", 
+                    "status": "success"
+                })
+                
+            elif msg["type"] == "done":
+                st.session_state["run_state"]["final_report"] = msg["payload"]
+                st.session_state["timeline"].insert(0, {
+                    "timestamp": ts, 
+                    "source": "SYS", 
+                    "text": "Mission Complete", 
+                    "status": "success"
+                })
+                st.session_state["worker"] = None # Stop polling
+                
+            elif msg["type"] == "error":
+                st.error(msg["payload"])
+                st.session_state["worker"] = None
+                
+    except queue.Empty:
+        pass
+        
+    time.sleep(0.5)
+    st.rerun()

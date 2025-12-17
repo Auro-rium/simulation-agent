@@ -26,7 +26,7 @@ class ConstraintAgent(BaseAgent):
         result = await self.llm_client.generate_structured_output(
             prompt,
             response_schema=ConstraintResult.model_json_schema(),
-            model="llama-3.3-70b-versatile"
+            model="openai/gpt-oss-120b"
         )
         return {"constraint_check": result}
 

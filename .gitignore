@@ -55,3 +55,6 @@ coverage.xml
 
 # Project Specific
 key.json
+cache/
+runs/
+__init__.py
